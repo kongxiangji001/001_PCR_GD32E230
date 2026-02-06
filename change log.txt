@@ -1,0 +1,748 @@
+/*!
+    \file    change log.txt
+    \brief   change log for GD32E23x firmware
+
+    \version 2025-08-08, V2.4.0, firmware for GD32E23x
+*/
+
+/*
+    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+
+    Redistribution and use in source and binary forms, with or without modification, 
+are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice, this 
+       list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice, 
+       this list of conditions and the following disclaimer in the documentation 
+       and/or other materials provided with the distribution.
+    3. Neither the name of the copyright holder nor the names of its contributors 
+       may be used to endorse or promote products derived from this software without 
+       specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+OF SUCH DAMAGE.
+*/
+******************* V2.4.0 2025-08-08 ************************************************************************************
+______________________Common______________________________________________________________________________________________
+Fix file:
+..\Firmware\CMSIS\GD\GD32E23x\Source\system_gd32e23x.c
+fix reason:
+In order to comply with MISRA.
+V2.3.0:
+None
+V2.4.0:
+static void _soft_delay_(uint32_t time);
+
+V2.3.0:
+#define SEL_IRC8M       0x00
+#define SEL_HXTAL       0x01
+#define SEL_PLL         0x02
+...
+V2.4.0:
+#define SEL_IRC8M       0x00U
+#define SEL_HXTAL       0x01U
+#define SEL_PLL         0x02U
+...
+
+fix reason:
+Add the frequency switching code RCU_MODIFY_UP_2(__delay) and incorporate this code into the functions system_clock_72m_hxtal and system_clock_72m_irc8m.
+V2.3.0:
+None
+V2.4.0:
+#define RCU_MODIFY_UP_2(__delay)     do{                                    \
+                                        volatile uint32_t i,reg;            \
+                                        if(0 != __delay){                   \
+                                            for(i=0; i<__delay; i++){       \
+                                            }                               \
+                                            reg = RCU_CFG0;                 \
+                                            reg &= ~(RCU_CFG0_AHBPSC);      \
+                                            reg |= RCU_AHB_CKSYS_DIV2;      \
+                                            RCU_CFG0 = reg;                 \
+                                            for(i=0; i<__delay; i++){       \
+                                            }                               \
+                                            reg = RCU_CFG0;                 \
+                                            reg &= ~(RCU_CFG0_AHBPSC);      \
+                                            reg |= RCU_AHB_CKSYS_DIV1;      \
+                                            RCU_CFG0 = reg;                 \
+                                    }                                       \
+                                }while(0)
+__________________________________________________________________________________________________________________________
+
+________________________Module FMC _______________________________________________________________________________________
+Fix file:
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_fmc.c
+fix reason:
+There is a while infinite loop in the function, add cautionary comments.
+V2.3.0:
+None
+V2.4.0:
+    \note       This function contains scenarios leading to an infinite loop.
+                Modify according to the use's actual usage scenarios.
+__________________________________________________________________________________________________________________________
+
+________________________Module RCU _______________________________________________________________________________________
+Fix file:
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_rcu.c
+fix reason:
+There is a while infinite loop in the function, add cautionary comments.
+V2.3.0:
+None
+V2.4.0:
+    \note       This function contains scenarios leading to an infinite loop.
+                Modify according to the use's actual usage scenarios.
+__________________________________________________________________________________________________________________________
+
+________________________Module SPI _______________________________________________________________________________________
+Fix file:
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_spi.c
+..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_spi.c
+fix reason:
+Macro name change
+V2.3.0:
+#define SPI_TXLVL_EMPTY_MASK                 ((uint32_t)0x00001800U)  /*!< SPI1 TXFIFO empty mask */
+#define SPI_RXLVL_EMPTY_MASK                 ((uint32_t)0x00000600U)  /*!< SPI1 RXFIFO empty mask */
+V2.4.0:
+#define SPI_TXLVL_MASK                       ((uint32_t)0x00001800U)  /*!< SPI1 TXFIFO mask */
+#define SPI_RXLVL_MASK                       ((uint32_t)0x00000600U)  /*!< SPI1 RXFIFO mask */
+
+fix reason:
+Frequency division value change
+V2.3.0:
+    if((i2sdiv < 4U) || (i2sdiv > 255U)) {
+        if(0 != i2sof){
+            i2sdiv = 3U;
+        } else {
+            i2sdiv = 4U;
+        }
+    }
+V2.4.0:
+    if((i2sdiv < 2U) || (i2sdiv > 255U)) {
+        if(0 != i2sof){
+            i2sdiv = 3U;
+        } else {
+            i2sdiv = 4U;
+        }
+    }
+__________________________________________________________________________________________________________________________
+
+________________________Module USART _______________________________________________________________________________________
+Fix file:
+..\Examples\USART\Half_duplex_transmitter&receiver\main.c
+fix reason:
+Optimize usage, Change GPIO mode from GPIO_OTYPE_PP to GPIO_OTYPE_OD.
+V2.3.0:
+    /* configure USART0 Tx as alternate function push-pull */
+    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_9);
+    gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_9);
+    /* configure USART1 Tx as alternate function push-pull */
+    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_2);
+    gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_2);
+V2.4.0:
+    /* configure USART0 Tx as alternate function open drain */
+    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_9);
+    gpio_output_options_set(GPIOA, GPIO_OTYPE_OD, GPIO_OSPEED_50MHZ, GPIO_PIN_9);
+    /* configure USART1 Tx as alternate function open drain */
+    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_2);
+    gpio_output_options_set(GPIOA, GPIO_OTYPE_OD, GPIO_OSPEED_50MHZ, GPIO_PIN_2);
+__________________________________________________________________________________________________________________________
+
+________________________Module PMU _______________________________________________________________________________________
+Fix file:
+..\Examples\PMU\Deepsleep_wakeup_exti\main.c
+..\Examples\PMU\Deepsleep_wakeup_RTC\main.c
+..\Examples\PMU\Standby_wakeup_pin\main.c
+..\Examples\PMU\Standby_wakeup_RTC\main.c
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_pmu.c
+fix reason:
+Added a clock switch mechanism before MCU go to sleep mode .
+V2.3.0:
+None
+V2.4.0:
+/* software delay to prevent the impact of Vcore fluctuations.
+   It is strongly recommended to include it to avoid issues caused by self-removal. */
+static void _soft_delay_(uint32_t time)
+{
+    __IO uint32_t i;
+    for(i=0; i<time*10; i++){
+    }
+}
+
+/* The following is to prevent Vcore fluctuations caused by frequency switching. 
+           It is strongly recommended to include it to avoid issues caused by self-removal. */
+        rcu_ahb_clock_config(RCU_AHB_CKSYS_DIV2);
+        _soft_delay_(0x80);
+        rcu_ahb_clock_config(RCU_AHB_CKSYS_DIV4);
+        _soft_delay_(0x80);
+
+fix reason:
+ When using the WFE method to enter sleep mode via the pmu_to_sleepmode interface, one SEV instruction and two WFE instructions are required.
+V2.3.0:
+    } else {
+        __WFE();
+        __WFE();
+    }
+V2.4.0:
+    } else {
+        __SEV();
+        __WFE();
+        __WFE();
+    }
+__________________________________________________________________________________________________________________________
+
+________________________Module CRC _______________________________________________________________________________________
+Fix file:
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_crc.c
+fix reason:
+In order to comply with MISRA.
+V2.3.0:
+uint32_t crc_block_data_calculate(void *array, uint32_t size, uint8_t data_format)
+{
+    uint8_t *data8;
+    uint16_t *data16;
+    uint32_t *data32;
+    uint32_t index;
+
+    if(INPUT_FORMAT_WORD == data_format) {
+        data32 = (uint32_t *)array;
+        for(index = 0U; index < size; index++) {
+            REG32(CRC) = data32[index];
+        }
+    } else if(INPUT_FORMAT_HALFWORD == data_format) {
+        data16 = (uint16_t *)array;
+        for(index = 0U; index < size; index++) {
+            REG16(CRC) = data16[index];
+        }
+    } else {
+        data8 = (uint8_t *)array;
+        for(index = 0U; index < size; index++) {
+            REG8(CRC) =  data8[index];
+        }
+    }
+
+    return (CRC_DATA);
+}
+V2.4.0:
+uint32_t crc_block_data_calculate(void *array, uint32_t size, uint8_t data_format)
+{
+    uint32_t index;
+    uint32_t data;
+    uint32_t data_calcul = 0xFFFFFFFFU;
+
+    data = (uint32_t)array;
+
+    if(INPUT_FORMAT_WORD == data_format) {
+        for(index = 0U; index < size; index++) {
+            REG32(CRC) = *(uint32_t *)data;
+            data += 4U;
+        }
+    } else if(INPUT_FORMAT_HALFWORD == data_format) {
+        for(index = 0U; index < size; index++) {
+            REG16(CRC) = *(uint16_t *)data;
+            data += 2U;
+        }
+    } else {
+        for(index = 0U; index < size; index++) {
+            REG8(CRC) = *(uint8_t *)data;
+            data += 1U;
+        }
+    }
+    data_calcul = CRC_DATA;
+
+    return data_calcul;
+}
+__________________________________________________________________________________________________________________________
+
+________________________Module ADC _______________________________________________________________________________________
+Fix file:
+..\Examples\ADC\Timer_trigger_injected_channel\main.c
+..\Examples\PMU\Timer_trigger_injected_channel\readme.txt
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_adc.c
+fix reason:
+Modify note and add injected group read value.
+V2.3.0:
+None
+V2.4.0:
+        delay_1ms(1000);
+        /* read ADC inserted group data register */
+        inserted_data[0] = adc_inserted_data_read(ADC_INSERTED_CHANNEL_0);
+        inserted_data[1] = adc_inserted_data_read(ADC_INSERTED_CHANNEL_1);
+        inserted_data[2] = adc_inserted_data_read(ADC_INSERTED_CHANNEL_2);
+        inserted_data[3] = adc_inserted_data_read(ADC_INSERTED_CHANNEL_3);
+   
+******************* V2.3.0 2025-02-10 ************************************************************************************
+______________________Common______________________________________________________________________________________________
+
+Fix file:
+..\Utilities\gd32e230c_eval.c
+fix reason:
+Changing variable types.
+V2.2.0:
+static const uint8_t KEY_IRQn[KEYn]             = {WAKEUP_KEY_EXTI_IRQn, 
+                                                   TAMPER_KEY_EXTI_IRQn
+                                                   };
+V2.3.0:
+static const IRQn_Type KEY_IRQn[KEYn]             = {WAKEUP_KEY_EXTI_IRQn, 
+                                                   TAMPER_KEY_EXTI_IRQn
+                                                   };
+
+Fix file:
+..\Firmware\CMSIS\GD\GD32E23x\Source\system_gd32e23x.c
+fix reason:
+update the clock switch code
+V2.2.0:
+#define RCU_MODIFY(__delay)     do{                                     \
+                                    volatile uint32_t i;                \
+                                    if(0 != __delay){                   \
+                                        RCU_CFG0 |= RCU_AHB_CKSYS_DIV2; \
+                                        for(i=0; i<__delay; i++){       \
+                                        }                               \
+                                        RCU_CFG0 |= RCU_AHB_CKSYS_DIV4; \
+                                        for(i=0; i<__delay; i++){       \
+                                        }                               \
+                                    }                                   \
+                                }while(0)
+
+V2.3.0:
+#define RCU_MODIFY(__delay)     do{                                     \
+                                    volatile uint32_t i,reg;            \
+                                    if(0 != __delay){                   \
+                                        reg = RCU_CFG0;                 \
+                                        reg &= ~(RCU_CFG0_AHBPSC);      \
+                                        /* CK_AHB = SYSCLK/2 */         \
+                                        reg |= RCU_AHB_CKSYS_DIV2;      \
+                                        RCU_CFG0 = reg;                 \
+                                        for(i=0; i<__delay; i++){       \
+                                        }                               \
+                                        reg = RCU_CFG0;                 \
+                                        reg &= ~(RCU_CFG0_AHBPSC);      \
+                                        reg |= RCU_AHB_CKSYS_DIV4;      \
+                                        /* CK_AHB = SYSCLK/4 */         \
+                                        RCU_CFG0 = reg;                 \
+                                        for(i=0; i<__delay; i++){       \
+                                        }                               \
+                                    }                                   \
+                                }while(0)
+
+V2.2.0:
+none
+V2.3.0:
+/* software delay to prevent the impact of Vcore fluctuations.
+   It is strongly recommended to include it to avoid issues caused by self-removal. */
+static void _soft_delay_(uint32_t time)
+{
+    __IO uint32_t i;
+    for(i=0; i<time*10; i++){
+    }
+}
+
+V2.2.0:
+void SystemInit (void)
+{
+    /* enable IRC8M */
+    RCU_CTL0 |= RCU_CTL0_IRC8MEN;
+    while(0U == (RCU_CTL0 & RCU_CTL0_IRC8MSTB)){
+    }
+
+    RCU_MODIFY(0x80);
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    ......
+}
+V2.3.0:
+void SystemInit (void)
+{
+    /* enable IRC8M */
+    RCU_CTL0 |= RCU_CTL0_IRC8MEN;
+    while(0U == (RCU_CTL0 & RCU_CTL0_IRC8MSTB)){
+    }
+    if(((RCU_CFG0 & RCU_CFG0_SCSS) == RCU_SCSS_PLL)){
+        RCU_MODIFY(0x80);
+    }
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    _soft_delay_(100);
+    ......
+}
+
+V2.2.0:
+static void system_clock_8m_hxtal(void)
+{
+    ......
+    /* select HXTAL as system clock */
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    RCU_CFG0 |= RCU_CKSYSSRC_HXTAL;
+    ......
+}
+V2.3.0:
+static void system_clock_8m_hxtal(void)
+{
+    __IO uint32_t reg_temp;
+    ......
+
+    reg_temp = RCU_CFG0;
+    /* select HXTAL as system clock */
+    reg_temp &= ~RCU_CFG0_SCS;
+    reg_temp |= RCU_CKSYSSRC_HXTAL;
+    RCU_CFG0 = reg_temp;
+    ......
+}
+V2.2.0:
+static void system_clock_72m_hxtal(void)
+{
+    ......
+    /* select HXTAL as system clock */
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    RCU_CFG0 |= RCU_CKSYSSRC_HXTAL;
+    ......
+}
+V2.3.0:
+static void system_clock_72m_hxtal(void)
+{
+    __IO uint32_t reg_temp;
+    ......
+
+    reg_temp = RCU_CFG0;
+    /* select HXTAL as system clock */
+    reg_temp &= ~RCU_CFG0_SCS;
+    reg_temp |= RCU_CKSYSSRC_HXTAL;
+    RCU_CFG0 = reg_temp;
+    ......
+}
+V2.2.0:
+static void system_clock_72m_irc8m(void)
+{
+    ......
+    /* select PLL as system clock */
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    RCU_CFG0 |= RCU_CKSYSSRC_PLL;
+    ......
+}
+V2.3.0:
+static void system_clock_72m_irc8m(void)
+{
+    __IO uint32_t reg_temp;
+    ......
+
+    reg_temp = RCU_CFG0;
+    /* select PLL as system clock */
+    reg_temp &= ~RCU_CFG0_SCS;
+    reg_temp |= RCU_CKSYSSRC_PLL;
+    RCU_CFG0 = reg_temp;
+    ......
+}
+V2.2.0:
+static void system_clock_8m_irc8m(void)
+{
+    ......
+    /* select IRC8M as system clock */
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    RCU_CFG0 |= RCU_CKSYSSRC_IRC8M;
+    ......
+}
+V2.3.0:
+static void system_clock_8m_irc8m(void)
+{
+    uint32_t timeout = 0U;
+    uint32_t stab_flag = 0U;
+    __IO uint32_t reg_temp;
+    
+    /* enable IRC8M */
+    RCU_CTL0 |= RCU_CTL0_IRC8MEN;
+
+    /* wait until IRC8M is stable or the startup time is longer than IRC8M_STARTUP_TIMEOUT */
+    do{
+        timeout++;
+        stab_flag = (RCU_CTL0 & RCU_CTL0_IRC8MSTB);
+    }
+    while((0U == stab_flag) && (IRC8M_STARTUP_TIMEOUT != timeout));
+
+    /* if fail */
+    if(0U == (RCU_CTL0 & RCU_CTL0_IRC8MSTB)){
+        while(1){
+        }
+    }
+
+    ......
+    RCU_CFG0 |= RCU_APB1_CKAHB_DIV1;
+    
+    reg_temp = RCU_CFG0;
+    /* select IRC8M as system clock */
+    reg_temp &= ~RCU_CFG0_SCS;
+    reg_temp |= RCU_CKSYSSRC_IRC8M;
+    RCU_CFG0 = reg_temp;
+    ......
+}
+__________________________________________________________________________________________________________________________
+
+________________________Module I2C _______________________________________________________________________________________
+Fix file:
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_i2c.c
+..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_i2c.h"
+fix reason:
+Add a new bit and corresponding control function
+V2.2.0:
+none
+V2.3.0:
+#define I2C_CTL1_RBNECM               BIT(15)                           /*!< RBNE clear mode */
+/*!
+    \brief      configure RBNE clear mode
+    \param[in]  i2c_periph: I2Cx(x=0,1)
+    \param[in]  mode:
+                only one parameter can be selected which is shown as below:
+      \arg        I2C_RBNE_CLEAR_BTC_0: RBNE can be cleared when I2C_DATA is read and BTC is cleared
+      \arg        I2C_RBNE_CLEAR: RBNE can be cleared when I2C_DATA is read
+    \param[out] none
+    \retval     none
+*/
+void i2c_rbne_clear_config(uint32_t i2c_periph, uint32_t mode)
+{
+    /* configure RBNE clear mode */
+    uint32_t ctl = 0U;
+
+    ctl = I2C_CTL1(i2c_periph);
+    ctl &= ~(I2C_CTL1_RBNECM);
+    ctl |= mode;
+    I2C_CTL1(i2c_periph) = ctl;
+}
+__________________________________________________________________________________________________________________________
+
+________________________Module RCU _______________________________________________________________________________________
+Fix file:
+..\Examples\RCU\System_clock_switch\main.c
+fix reason:
+update the clock switch code
+V2.2.0:
+none
+V2.3.0:
+#define RCU_MODIFY(__delay)     do{                                     \
+                                    volatile uint32_t i,reg;            \
+                                    if(0 != __delay){                   \
+                                        reg = RCU_CFG0;                 \
+                                        reg &= ~(RCU_CFG0_AHBPSC);      \
+                                        /* CK_AHB = SYSCLK/2 */         \
+                                        reg |= RCU_AHB_CKSYS_DIV2;      \
+                                        RCU_CFG0 = reg;                 \
+                                        for(i=0; i<__delay; i++){       \
+                                        }                               \
+                                        reg = RCU_CFG0;                 \
+                                        reg &= ~(RCU_CFG0_AHBPSC);      \
+                                        reg |= RCU_AHB_CKSYS_DIV4;      \
+                                        /* CK_AHB = SYSCLK/4 */         \
+                                        RCU_CFG0 = reg;                 \
+                                        for(i=0; i<__delay; i++){       \
+                                        }                               \
+                                    }                                   \
+                                }while(0)
+
+static void _soft_delay_(uint32_t time)
+{
+    __IO uint32_t i;
+    for(i=0; i<time*10; i++){
+    }
+}
+V2.2.0
+static void switch_system_clock_to_36m_hxtal(void)
+{
+    ......
+
+    /* select PLL as system clock */
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    RCU_CFG0 |= RCU_CKSYSSRC_PLL;
+
+    ......
+}
+V2.3.0
+static void switch_system_clock_to_36m_hxtal(void)
+{
+    uint32_t timeout = 0U;
+    uint32_t stab_flag = 0U;
+    __IO uint32_t reg_temp;
+    
+    RCU_MODIFY(0x80);
+    /* select IRC8M as system clock source, deinitialize the RCU */
+    rcu_system_clock_source_config(RCU_CKSYSSRC_IRC8M);
+    _soft_delay_(100);
+
+    .......
+
+    reg_temp = RCU_CFG0;
+    /* select PLL as system clock */
+    reg_temp &= ~RCU_CFG0_SCS;
+    reg_temp |= RCU_CKSYSSRC_PLL;
+    RCU_CFG0 = reg_temp;
+
+    ......
+}
+V2.2.0
+static void switch_system_clock_to_72m_irc8m(void)
+{
+    ......
+
+    /* select PLL as system clock */
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    RCU_CFG0 |= RCU_CKSYSSRC_PLL;
+
+    ......
+}
+V2.3.0
+static void switch_system_clock_to_72m_irc8m(void)
+{
+    uint32_t timeout = 0U;
+    uint32_t stab_flag = 0U;
+    __IO uint32_t reg_temp;
+    
+    RCU_MODIFY(0x80);
+    /* select IRC8M as system clock source, deinitialize the RCU */
+    rcu_system_clock_source_config(RCU_CKSYSSRC_IRC8M);
+    _soft_delay_(100);
+
+    ......
+
+    reg_temp = RCU_CFG0;
+    /* select PLL as system clock */
+    reg_temp &= ~RCU_CFG0_SCS;
+    reg_temp |= RCU_CKSYSSRC_PLL;
+    RCU_CFG0 = reg_temp;
+
+    ......
+}
+__________________________________________________________________________________________________________________________
+
+________________________Module MISC _______________________________________________________________________________________
+Fix file:
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_misc.c
+..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_misc.h"
+fix reason:
+Changing variable types
+V2.2.0:
+/* enable NVIC request */
+void nvic_irq_enable(uint8_t nvic_irq, uint8_t nvic_irq_priority);
+/* disable NVIC request */
+void nvic_irq_disable(uint8_t nvic_irq);
+V2.3.0:
+/* enable NVIC request */
+void nvic_irq_enable(IRQn_Type nvic_irq, uint8_t nvic_irq_priority);
+/* disable NVIC request */
+void nvic_irq_disable(IRQn_Type nvic_irq);
+__________________________________________________________________________________________________________________________
+
+
+******************* V2.2.0 2024-07-22 ************************************************************************************
+______________________Common______________________________________________________________________________________________
+Fix file:
+..\Firmware\CMSIS\GD\GD32E23x\Source\system_gd32e23x.c
+..\Firmware\CMSIS\GD\GD32E23x\Include\system_gd32e23x.h
+..\Template\main.c
+fix reason:
+Add a function to obtain the firmware library version number.
+V2.1.0:
+none
+V2.2.0:
+uint32_t gd32e23x_firmware_version_get(void)
+
+Fix file:
+..\gd32e23x_it.c
+fix reason:
+Add an interrupt handler for SRAM parity check errors in the gd32e23x_it.c file.
+V2.1.0:
+none
+V2.2.0:
+if(SET == syscfg_flag_get(SYSCFG_SRAM_PCEF)) {
+        SRAM_PARITY_CHECK_ERROR_HANDLE("SRAM parity check error error\r\n");
+    }
+
+Fix file:
+..\main.c
+fix reason:
+Compatible with GCC compilation environment.
+V2.1.0:
+/* retarget the C library printf function to the USART */
+int fputc(int ch, FILE *f)
+{
+    usart_data_transmit(EVAL_COM, (uint8_t)ch);
+    while(RESET == usart_flag_get(EVAL_COM, USART_FLAG_TBE));
+
+    return ch;
+}
+V2.2.0:
+#ifdef GD_ECLIPSE_GCC
+/* retarget the C library printf function to the USART, in Eclipse GCC environment */
+int __io_putchar(int ch)
+{
+    usart_data_transmit(EVAL_COM, (uint8_t) ch);
+    while(RESET == usart_flag_get(EVAL_COM, USART_FLAG_TBE));
+    return ch;
+}
+#else
+/* retarget the C library printf function to the USART */
+int fputc(int ch, FILE *f)
+{
+    usart_data_transmit(EVAL_COM, (uint8_t)ch);
+    while(RESET == usart_flag_get(EVAL_COM, USART_FLAG_TBE));
+
+    return ch;
+}
+#endif /* GD_ECLIPSE_GCC */
+
+Fix file:
+..\Firmware\CMSIS\GD\GD32E23x\Source\ARM\startup_gd32e23x.s
+..\Firmware\CMSIS\GD\GD32E23x\Source\IAR\startup_gd32e23x.s
+fix reason:
+When the SRAM parity check is enabled, it is necessary to initialize the entire SRAM memory at the beginning of the code to avoid parity check errors when reading from uninitialized locations.
+V2.1.0:
+none
+V2.2.0:
+                LDR     R0, =0x1FFFF7E0
+                LDR     R2, [R0]
+                LDR     R0, = 0xFFFF0000
+                ANDS    R2, R2, R0
+                LSRS    R2, R2, #16
+                LSLS    R2, R2, #10
+                LDR     R1, =0x20000000
+                MOV     R0, #0x00
+SRAM_INIT       STM     R1!, {R0}
+                SUBS    R2, R2, #4
+                CMP     R2, #0x00
+                BNE     SRAM_INIT
+__________________________________________________________________________________________________________________________
+
+________________________Module SPI _______________________________________________________________________________________
+Fix file:
+..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_spi.h
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_spi.c
+fix reason: 
+The function FlagStatus spi_i2s_flag_get(uint32_t spi_periph, uint32_t flag) has issues when the input parameter is 
+SPI_FLAG_TXLVL_EMPTY & SPI_FLAG_RXLVL_EMPTY. Therefore, differentiate the macro definitions related to TXLVL_EMPTY and RXLVL_EMPTY.
+V2.1.0:
+none
+V2.2.0:
+/* only for SPI1 */
+#define SPI_FLAG_TXLVL_EMPTY            ((uint32_t)0x10000000)                  /*!< SPI TXFIFO is empty */
+#define SPI_FLAG_TXLVL_QUARTER_FULL     SPI_TXLVL_QUARTER_FULL                  /*!< SPI TXFIFO is a quarter of full */
+#define SPI_FLAG_TXLVL_HAlF_FULL        SPI_TXLVL_HAlF_FULL                     /*!< SPI TXFIFO is a half of full */
+#define SPI_FLAG_TXLVL_FULL             SPI_TXLVL_FULL                          /*!< SPI TXFIFO is full */
+#define SPI_FLAG_RXLVL_EMPTY            ((uint32_t)0x20000000)                  /*!< SPI RXFIFO is empty */
+#define SPI_FLAG_RXLVL_QUARTER_FULL     SPI_RXLVL_QUARTER_FULL                  /*!< SPI RXFIFO is a quarter of full */
+#define SPI_FLAG_RXLVL_HAlF_FULL        SPI_RXLVL_HAlF_FULL                     /*!< SPI RXFIFO is a half of full */
+#define SPI_FLAG_RXLVL_FULL             SPI_RXLVL_FULL                          /*!< SPI RXFIFO is full */
+__________________________________________________________________________________________________________________________
+
+______________________Module CMP_____________________________________________________________________________________________
+Fix file:
+..\Firmware\GD32E23x_standard_peripheral\Source\gd32e23x_cmp.c
+..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_cmp.h
+fix reason: 
+The input sources PA0 and PA2 for CMP_IM should be set as two macros.
+V2.1.0:
+#define CMP_INVERTING_INPUT_PA0_PA2              CS_CMPXMSEL(6)                 /*!< CMP inverting input PA0 for CMP0 or PA2 for CMP1 */
+V2.2.0:
+#define CMP_INVERTING_INPUT_PA0                  CS_CMPXMSEL(6)                 /*!< CMP inverting input PA0 */
+#define CMP_INVERTING_INPUT_PA2                  CS_CMPXMSEL(7)                 /*!< CMP inverting input PA2 */
+__________________________________________________________________________________________________________________________
