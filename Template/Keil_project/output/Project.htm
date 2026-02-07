@@ -3,9 +3,9 @@
 <title>Static Call Graph - [.\output\Project.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\output\Project.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6230001: Last Updated: Fri Feb  6 23:11:01 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6230001: Last Updated: Sat Feb  7 11:49:58 2026
 <BR><P>
-<H3>Maximum Stack Usage =        260 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
+<H3>Maximum Stack Usage =        276 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
 main &rArr; GetTemp &rArr; OW_ReadConfig &rArr; OW_ReadScratchpad &rArr; OW_WriteByte &rArr; OW_WriteBit &rArr; Delay_us
 <P>
@@ -355,6 +355,7 @@ Global Symbols
 <BR>[Calls]<UL><LI><a href="#[3e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;delay_1ms
 </UL>
 <BR>[Called By]<UL><LI><a href="#[3f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetTemp
+<LI><a href="#[22]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
 <P><STRONG><a name="[50]"></a>Delay_us</STRONG> (Thumb, 208 bytes, Stack size 44 bytes, delay.o(.text.Delay_us))
@@ -371,9 +372,9 @@ Global Symbols
 <BR>[Calls]<UL><LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OW_ReadConfig
 <LI><a href="#[41]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OW_ReadTempWaiting
 <LI><a href="#[40]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OW_ConvertTemp
-<LI><a href="#[3d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Delay_ms
 <LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_f2d
 <LI><a href="#[42]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MY_OutputtoTemp
+<LI><a href="#[3d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Delay_ms
 <LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;printf
 <LI><a href="#[28]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memclr
 </UL>
@@ -583,6 +584,7 @@ Global Symbols
 <LI><a href="#[56]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OW_WriteBit
 <LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OW_ResetPresence
 <LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OW_Init
+<LI><a href="#[22]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
 <P><STRONG><a name="[51]"></a>gpio_input_bit_get</STRONG> (Thumb, 42 bytes, Stack size 12 bytes, gd32e23x_gpio.o(.text.gpio_input_bit_get))
@@ -608,10 +610,12 @@ Global Symbols
 <LI><a href="#[60]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;usart0_init
 </UL>
 
-<P><STRONG><a name="[22]"></a>main</STRONG> (Thumb, 100 bytes, Stack size 24 bytes, main.o(.text.main))
-<BR><BR>[Stack]<UL><LI>Max Depth = 260<LI>Call Chain = main &rArr; GetTemp &rArr; OW_ReadConfig &rArr; OW_ReadScratchpad &rArr; OW_WriteByte &rArr; OW_WriteBit &rArr; Delay_us
+<P><STRONG><a name="[22]"></a>main</STRONG> (Thumb, 136 bytes, Stack size 40 bytes, main.o(.text.main))
+<BR><BR>[Stack]<UL><LI>Max Depth = 276<LI>Call Chain = main &rArr; GetTemp &rArr; OW_ReadConfig &rArr; OW_ReadScratchpad &rArr; OW_WriteByte &rArr; OW_WriteBit &rArr; Delay_us
 </UL>
-<BR>[Calls]<UL><LI><a href="#[3f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetTemp
+<BR>[Calls]<UL><LI><a href="#[3d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Delay_ms
+<LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;gpio_bit_set
+<LI><a href="#[3f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GetTemp
 <LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OW_ResetPresence
 <LI><a href="#[4f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;gpio_bit_reset
 <LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;gpio_output_options_set
@@ -766,7 +770,7 @@ Global Symbols
 <H3>
 Local Symbols
 </H3>
-<P><STRONG><a name="[60]"></a>usart0_init</STRONG> (Thumb, 132 bytes, Stack size 24 bytes, main.o(.text.usart0_init))
+<P><STRONG><a name="[60]"></a>usart0_init</STRONG> (Thumb, 128 bytes, Stack size 24 bytes, main.o(.text.usart0_init))
 <BR><BR>[Stack]<UL><LI>Max Depth = 180<LI>Call Chain = usart0_init &rArr; usart_baudrate_set &rArr; rcu_clock_freq_get
 </UL>
 <BR>[Calls]<UL><LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;usart_enable
