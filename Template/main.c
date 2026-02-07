@@ -38,30 +38,8 @@ OF SUCH DAMAGE.
 #include "delay.h"
 #include "T117_MTS4_OW.h"
 #include "gd32e23x_usart.h"
+#include "config.h"
 #include <stdio.h>
-
-/* USART1 (PA2 TX, PA3 RX) basic init for printf debugging */
-static void usart0_init(void)
-{
-    /* enable clocks */
-    rcu_periph_clock_enable(RCU_GPIOA);
-    rcu_periph_clock_enable(RCU_USART1);
-
-    /* configure PA2 (TX) and PA3 (RX) as AF1 */
-    gpio_af_set(GPIOA, GPIO_AF_1, GPIO_PIN_2 | GPIO_PIN_3);
-    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_2 | GPIO_PIN_3);
-    gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_2);
-
-    /* configure USART1 */
-    usart_deinit(USART1);
-    usart_baudrate_set(USART1, 115200U);
-    usart_word_length_set(USART1, USART_WL_8BIT);
-    usart_stop_bit_set(USART1, USART_STB_1BIT);
-    usart_parity_config(USART1, USART_PM_NONE);
-    usart_transmit_config(USART1, USART_TRANSMIT_ENABLE);
-    usart_receive_config(USART1, USART_RECEIVE_DISABLE);
-    usart_enable(USART1);
-}
 
 /* retarget printf to USART1 */
 int fputc(int ch, FILE *f)
@@ -81,17 +59,7 @@ int fputc(int ch, FILE *f)
 int main(void)
 {
     systick_config();
-    usart0_init();
-    OW_Init();
-    
-    /* enable the LED GPIO clock */
-    rcu_periph_clock_enable(RCU_GPIOC);
-    rcu_periph_clock_enable(RCU_GPIOB);
-    /* configure LED GPIO port */ 
-    gpio_mode_set(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_13);
-    gpio_output_options_set(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_13);
-    /* reset LED GPIO pin */
-    gpio_bit_reset(GPIOC,GPIO_PIN_13);
+    IO_Config(); /* initialize USART1, OW and LED IO */
 
 
     while(1){

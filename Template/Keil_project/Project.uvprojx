@@ -414,6 +414,11 @@
               <FileType>1</FileType>
               <FilePath>..\delay.c</FilePath>
             </File>
+            <File>
+              <FileName>config.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
