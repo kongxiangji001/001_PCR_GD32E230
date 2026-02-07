@@ -22,4 +22,4 @@
   ..\..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_wwdgt.h \
   ..\..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_misc.h \
   ..\..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_cmp.h \
-  ..\systick.h
+  ..\systick.h ..\config.h

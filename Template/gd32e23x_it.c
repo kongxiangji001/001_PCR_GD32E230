@@ -34,6 +34,7 @@ OF SUCH DAMAGE.
 
 #include "gd32e23x_it.h"
 #include "systick.h"
+#include "config.h"
 
 #define SRAM_PARITY_CHECK_ERROR_HANDLE(s)    do{}while(1)
 
@@ -103,4 +104,18 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
     delay_decrement();
+}
+
+/* TIMER2 update IRQ: set 100ms flag (timer configured to update at 1kHz and ARR counted to 1000) */
+void TIMER2_IRQHandler(void)
+{
+    static uint16_t ms_count = 0;
+    if (RESET != timer_flag_get(TIMER2, TIMER_FLAG_UP)) {
+        timer_flag_clear(TIMER2, TIMER_FLAG_UP);
+        ms_count++;
+        if (ms_count >= 100) { /* 100 updates @1ms -> 100ms */
+            ms_count = 0;
+            flag_100ms = 1;
+        }
+    }
 }

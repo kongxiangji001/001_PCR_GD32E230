@@ -499,7 +499,7 @@ int OW_ReadConfig(uint8_t* cfg, uint8_t x)
   * @param  无
   * @retval 状态
 */
-int GetTemp(void)
+float GetTemp(void)
 {
 	float fTemp;
 	unsigned short iTemp;
@@ -546,8 +546,8 @@ int GetTemp(void)
   #endif
 	PR("  Temp=%.2f\n", fTemp);
 
-  #ifndef SingleIC
-	}
-  #endif
-return 1;
+	#ifndef SingleIC
+		}
+	#endif
+		return fTemp;
 }

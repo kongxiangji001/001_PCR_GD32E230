@@ -2,6 +2,12 @@
 #include "gd32e23x_usart.h"
 #include "owmy.h"
 #include "delay.h"
+#include "gd32e23x_timer.h"
+#include "gd32e23x_rcu.h"
+#include "gd32e23x_misc.h"
+
+/* effective timer period (ARR+1) used for duty mapping */
+uint32_t g_timer2_period = 0;
 
 /* local helper: init USART1 on PA2 (TX) / PA3 (RX) */
 static void usart1_init_local(void)
@@ -41,4 +47,98 @@ void IO_Config(void)
     gpio_mode_set(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_13);
     gpio_output_options_set(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_13);
     gpio_bit_reset(GPIOC, GPIO_PIN_13);
+}
+
+/* 100ms flag (set in IRQ) */
+volatile uint8_t flag_100ms = 0;
+
+/* configure TIMER2: PWM on CH2 (PB0) and CH3 (PB1), update interrupt every 100ms */
+void Config_Timer2_Init(uint32_t pwm_freq_hz)
+{
+    timer_parameter_struct initpara;
+    timer_oc_parameter_struct ocpara;
+    uint32_t pclk1;
+    uint32_t prescaler;
+    uint32_t arr;
+
+    /* enable clocks */
+    rcu_periph_clock_enable(RCU_TIMER2);
+    rcu_periph_clock_enable(RCU_GPIOB);
+
+    /* configure PB0/PB1 as AF for TIMER2_CH2/CH3 */
+    gpio_af_set(GPIOB, GPIO_AF_1, GPIO_PIN_0 | GPIO_PIN_1);
+    gpio_mode_set(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_0 | GPIO_PIN_1);
+    gpio_output_options_set(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_0 | GPIO_PIN_1);
+    /* choose ARR (period) from PWM_RESOLUTION and compute prescaler to meet pwm_freq_hz */
+    pclk1 = rcu_clock_freq_get(CK_APB1);
+    arr = PWM_RESOLUTION - 1U;
+    /* try to find prescaler <= 0xFFFF; if not, reduce arr */
+    while (1) {
+        uint64_t denom = (uint64_t)pwm_freq_hz * (uint64_t)(arr + 1U);
+        if (denom == 0) denom = 1;
+        uint64_t pres64 = (uint64_t)pclk1 / denom;
+        if (pres64 == 0) pres64 = 1;
+        if (pres64 - 1U <= 0xFFFFU) {
+            prescaler = (uint32_t)(pres64 - 1U);
+            break;
+        }
+        if (arr > 16U) {
+            arr = arr / 2U; /* reduce resolution to fit prescaler */
+        } else {
+            /* fall back to max prescaler */
+            prescaler = 0xFFFFU;
+            break;
+        }
+    }
+
+    timer_struct_para_init(&initpara);
+    initpara.prescaler = (uint16_t)prescaler;
+    initpara.alignedmode = TIMER_COUNTER_EDGE;
+    initpara.counterdirection = TIMER_COUNTER_UP;
+    initpara.period = (uint32_t)arr; /* ARR */
+    initpara.clockdivision = TIMER_CKDIV_DIV1;
+    timer_init(TIMER2, &initpara);
+
+    /* store effective period for duty mapping */
+    g_timer2_period = (uint32_t)arr + 1U;
+
+    /* configure OC for CH2 and CH3, PWM mode0 */
+    timer_channel_output_struct_para_init(&ocpara);
+    ocpara.outputstate = TIMER_CCX_ENABLE;
+    ocpara.outputnstate = TIMER_CCXN_DISABLE;
+    ocpara.ocpolarity = TIMER_OC_POLARITY_HIGH;
+    ocpara.ocnpolarity = TIMER_OCN_POLARITY_HIGH;
+    ocpara.ocidlestate = TIMER_OC_IDLE_STATE_LOW;
+    ocpara.ocnidlestate = TIMER_OCN_IDLE_STATE_LOW;
+
+    timer_channel_output_config(TIMER2, TIMER_CH_2, &ocpara);
+    timer_channel_output_mode_config(TIMER2, TIMER_CH_2, TIMER_OC_MODE_PWM0);
+    timer_channel_output_pulse_value_config(TIMER2, TIMER_CH_2, 0);
+    timer_channel_output_shadow_config(TIMER2, TIMER_CH_2, TIMER_OC_SHADOW_DISABLE);
+
+    timer_channel_output_config(TIMER2, TIMER_CH_3, &ocpara);
+    timer_channel_output_mode_config(TIMER2, TIMER_CH_3, TIMER_OC_MODE_PWM0);
+    timer_channel_output_pulse_value_config(TIMER2, TIMER_CH_3, 0);
+    timer_channel_output_shadow_config(TIMER2, TIMER_CH_3, TIMER_OC_SHADOW_DISABLE);
+
+    /* enable update interrupt and NVIC */
+    timer_interrupt_enable(TIMER2, TIMER_INT_UP);
+    nvic_irq_enable(TIMER2_IRQn, 2U);
+
+    /* enable timer */
+    timer_enable(TIMER2);
+}
+
+/* set heater PWM duty on channel 2 or 3 (channel param: 2 or 3) */
+void SetHeaterDuty(uint8_t channel, uint8_t duty_percent)
+{
+    if (duty_percent > 100) duty_percent = 100;
+    /* map 0..100 -> 0..(period) */
+    uint32_t period = (g_timer2_period == 0) ? PWM_RESOLUTION : g_timer2_period;
+    uint32_t pulse = ((uint32_t)duty_percent * period) / 100U; /* map 0..100 -> 0..period */
+    if (channel == 2) {
+        timer_channel_output_pulse_value_config(TIMER2, TIMER_CH_2, pulse);
+    } else if (channel == 3) {
+        timer_channel_output_pulse_value_config(TIMER2, TIMER_CH_3, pulse);
+    }
 }

@@ -40,6 +40,7 @@ OF SUCH DAMAGE.
 #include "gd32e23x_usart.h"
 #include "config.h"
 #include <stdio.h>
+#include "pid.h"
 
 /* retarget printf to USART1 */
 int fputc(int ch, FILE *f)
@@ -60,21 +61,33 @@ int main(void)
 {
     systick_config();
     IO_Config(); /* initialize USART1, OW and LED IO */
+    /* configure TIMER2 with desired PWM frequency (Hz) */
+    Config_Timer2_Init(2000U); /* 2kHz PWM */
+
+    const float setpoint = 42.0f;
+    /* PID parameters (tune as needed) */
+    const float Kp = 10.0f;
+    const float Ki = 0.5f;
+    const float Kd = 0.1f;
+    uint8_t duty = 0;
+    PIDController pid;
+    pid_init(&pid, Kp, Ki, Kd, 0.0f, 100.0f, 0.1f); /* dt = 0.1s (100ms) */
 
 
-    while(1){
-        /* detect OneWire device presence and print */
-        if (OW_ResetPresence()) {
-            //printf("OneWire device detected\r\n");
-            GetTemp(); /* read and print temperature via T117 functions */
-        } else {
-            printf("OneWire device not present\r\n");
+    while (1) {
+        if (flag_100ms) {
+            flag_100ms = 0;
+            /* read temperature (returns float) */
+            float temp = GetTemp();
+            /* PID compute */
+            float out = pid_compute(&pid, setpoint, temp);
+            if (out < 0.0f) out = 0.0f;
+            if (out > 100.0f) out = 100.0f;
+            duty = (uint8_t)out;
+            SetHeaterDuty(2, duty); /* TIM2_CH2 -> heater */
+
+            /* print status */
+            printf("T=%.2fC, Duty=%d%%\r\n", temp, duty);
         }
-
-        /* blink LED */
-        gpio_bit_set(GPIOC,GPIO_PIN_13);
-        Delay_ms(500);
-        gpio_bit_reset(GPIOC,GPIO_PIN_13);
-        Delay_ms(500);
     }
 }

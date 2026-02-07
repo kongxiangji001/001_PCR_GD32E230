@@ -170,5 +170,5 @@ int OW_SetConfig(uint8_t mps,uint8_t avg, uint8_t sleep,uint8_t x);
 int OW_ReadConfig(uint8_t *cfg,uint8_t x);
 int OW_ConvertTemp(uint8_t x);
 int OW_ReadTempWaiting(uint16_t *iTemp,uint8_t x);
-int GetTemp(void);
+float GetTemp(void);
 #endif /*T117_MTS4_OW_H */
