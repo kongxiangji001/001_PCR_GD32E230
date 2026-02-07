@@ -64,7 +64,7 @@ int main(void)
     /* configure TIMER2 with desired PWM frequency (Hz) */
     Config_Timer2_Init(2000U); /* 2kHz PWM */
 
-    const float setpoint = 42.0f;
+    const float setpoint = 95.0f;
     /* PID parameters (tune as needed) */
     const float Kp = 10.0f;
     const float Ki = 0.5f;
@@ -87,7 +87,7 @@ int main(void)
             SetHeaterDuty(2, duty); /* TIM2_CH2 -> heater */
 
             /* print status */
-            printf("T=%.2fC, Duty=%d%%\r\n", temp, duty);
+            printf("%.2f, %d\r\n", temp, duty);
         }
     }
 }

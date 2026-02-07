@@ -5,7 +5,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stdint.h"
 /*打印开关*/
-#define		print_en  1            //1为开启打印功能，0为关闭打印功能
+#define		print_en  0            //1为开启打印功能，0为关闭打印功能
 #define		PR(format, ...)    if (print_en) printf(format,##__VA_ARGS__);
 /*  Registers definition----------------------------------------------*/
 /*Bit definition of config register*/
