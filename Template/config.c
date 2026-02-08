@@ -1,6 +1,7 @@
 #include "config.h"
 #include "gd32e23x_usart.h"
 #include "owmy.h"
+#include "ow2.h"
 #include "delay.h"
 #include "gd32e23x_timer.h"
 #include "gd32e23x_rcu.h"
@@ -40,6 +41,8 @@ void IO_Config(void)
 
     /* OneWire init (OW_Init configures the selected DQ pin) */
     OW_Init();
+    /* init second DQ on PA12 */
+    OW2_Init();
 
     /* LED: PC13 */
     rcu_periph_clock_enable(RCU_GPIOC);

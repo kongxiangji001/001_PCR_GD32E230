@@ -41,6 +41,7 @@ OF SUCH DAMAGE.
 #include "config.h"
 #include <stdio.h>
 #include "pid.h"
+#include "ow2.h"
 
 /* retarget printf to USART1 */
 int fputc(int ch, FILE *f)
@@ -49,6 +50,25 @@ int fputc(int ch, FILE *f)
     while (RESET == usart_flag_get(USART1, USART_FLAG_TBE)) {
     }
     return ch;
+}
+
+/* Heater struct and helper (top-level, not nested) */
+typedef struct {
+    PIDController pid;
+    float setpoint;
+    uint8_t duty;
+} Heater_t;
+
+static uint8_t UpdateHeater(uint8_t channel, Heater_t *h, float (*getTempFunc)(void), float *outTemp)
+{
+    float temp = getTempFunc();
+    float out = pid_compute(&h->pid, h->setpoint, temp);
+    if (out < 0.0f) out = 0.0f;
+    if (out > 100.0f) out = 100.0f;
+    h->duty = (uint8_t)out;
+    SetHeaterDuty(channel, h->duty);
+    if (outTemp) *outTemp = temp;
+    return h->duty;
 }
 
 /*!
@@ -64,30 +84,27 @@ int main(void)
     /* configure TIMER2 with desired PWM frequency (Hz) */
     Config_Timer2_Init(2000U); /* 2kHz PWM */
 
-    const float setpoint = 95.0f;
-    /* PID parameters (tune as needed) */
+    /* initialize two heaters with same default PID params */
+    const float default_setpoint = 95.0f;
     const float Kp = 10.0f;
     const float Ki = 0.5f;
     const float Kd = 0.1f;
-    uint8_t duty = 0;
-    PIDController pid;
-    pid_init(&pid, Kp, Ki, Kd, 0.0f, 100.0f, 0.1f); /* dt = 0.1s (100ms) */
+    Heater_t heater1, heater2;
+    heater1.setpoint = default_setpoint;
+    heater1.duty = 0;
+    heater2.setpoint = default_setpoint;
+    heater2.duty = 0;
+    pid_init(&heater1.pid, Kp, Ki, Kd, 0.0f, 100.0f, 0.1f);
+    pid_init(&heater2.pid, Kp, Ki, Kd, 0.0f, 100.0f, 0.1f);
 
-
+    /* helper: update heater control is implemented at top-level */
     while (1) {
         if (flag_100ms) {
             flag_100ms = 0;
-            /* read temperature (returns float) */
-            float temp = GetTemp();
-            /* PID compute */
-            float out = pid_compute(&pid, setpoint, temp);
-            if (out < 0.0f) out = 0.0f;
-            if (out > 100.0f) out = 100.0f;
-            duty = (uint8_t)out;
-            SetHeaterDuty(2, duty); /* TIM2_CH2 -> heater */
-
-            /* print status */
-            printf("%.2f, %d\r\n", temp, duty);
+            float temp1 = 0.0f, temp2 = 0.0f;
+            uint8_t d1 = UpdateHeater(2, &heater1, GetTemp, &temp1); /* TIM2_CH2 -> heater1, DQ1 PB11 */
+            uint8_t d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
+            printf("%.2f, %d, %.2f, %d\r\n", temp1, d1, temp2, d2);
         }
     }
 }

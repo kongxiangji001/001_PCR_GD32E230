@@ -7,6 +7,7 @@
 ".\output\delay.o"
 ".\output\config.o"
 ".\output\pid.o"
+".\output\ow2.o"
 ".\output\system_gd32e23x.o"
 ".\output\gd32e23x_adc.o"
 ".\output\gd32e23x_cmp.o"
