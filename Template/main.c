@@ -77,9 +77,14 @@ static uint8_t UpdateHeater(uint8_t channel, Heater_t *h, float (*getTempFunc)(v
     \param[out] none
     \retval     none
 */
+/**
+ * 主函数
+ * 初始化系统定时器、IO接口、定时器2，并配置两个加热器的PID控制器
+ * 在主循环中每100ms更新一次加热器状态并打印温度和占空比信息
+ */
 int main(void)
 {
-    systick_config();
+    systick_config();                    /* 初始化系统定时器 */
     IO_Config(); /* initialize USART1, OW and LED IO */
     /* configure TIMER2 with desired PWM frequency (Hz) */
     Config_Timer2_Init(2000U); /* 2kHz PWM */
