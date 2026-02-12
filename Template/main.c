@@ -85,9 +85,9 @@ static uint8_t UpdateHeater(uint8_t channel, Heater_t *h, float (*getTempFunc)(v
 int main(void)
 {
     systick_config();                    /* 初始化系统定时器 */
-    IO_Config(); /* initialize USART1, OW and LED IO */
+    IO_Config();                         /* initialize USART1, OW and LED IO */
     /* configure TIMER2 with desired PWM frequency (Hz) */
-    Config_Timer2_Init(2000U); /* 2kHz PWM */
+    Config_Timer2_Init(2000U);           /* 2kHz PWM */
 
     /* initialize two heaters with same default PID params */
     const float default_setpoint = 95.0f;
@@ -106,6 +106,8 @@ int main(void)
     while (1) {
         if (flag_100ms) {
             flag_100ms = 0;
+            heater1.setpoint = 42.0f; /* 更新加热片1的目标温度 */
+            heater2.setpoint = 42.0f; /* 更新加热片2的目标温度 */
             float temp1 = 0.0f, temp2 = 0.0f;
             uint8_t d1 = UpdateHeater(2, &heater1, GetTemp, &temp1); /* TIM2_CH2 -> heater1, DQ1 PB11 */
             uint8_t d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
