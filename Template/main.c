@@ -104,17 +104,18 @@ int main(void)
 
     /* helper: update heater control is implemented at top-level */
     while (1) {
+        float temp1 = 0.0f, temp2 = 0.0f;
+        uint8_t d1 = 0, d2 = 0;
         if (flag_100ms) {
             flag_100ms = 0;
             heater1.setpoint = 42.0f; /* 更新加热片1的目标温度 */
             heater2.setpoint = 26.0f; /* 更新加热片2的目标温度 */
-            float temp1 = 0.0f, temp2 = 0.0f;
-            uint8_t d1 = UpdateHeater(2, &heater1, GetTemp, &temp1); /* TIM2_CH2 -> heater1, DQ1 PB11 */
-            uint8_t d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
-            if (flag_200ms) {
-                flag_200ms = 0;
-                printf("%.2f, %d, %.2f, %d\r\n", temp1, d1, temp2, d2);
-            }
+            d1 = UpdateHeater(2, &heater1, GetTemp, &temp1); /* TIM2_CH2 -> heater1, DQ1 PB11 */
+            d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
+        }
+        if (flag_200ms) {
+            flag_200ms = 0;
+            printf("%.2f, %d, %.2f, %d\r\n", temp1, d1, temp2, d2);
         }
     }
 }
