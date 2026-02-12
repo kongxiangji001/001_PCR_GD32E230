@@ -55,14 +55,21 @@ void IO_Config(void)
 /* 100ms flag (set in IRQ) */
 volatile uint8_t flag_100ms = 0;
 
+/* 200ms flag (set in IRQ) */
+volatile uint8_t flag_200ms = 0;
+
 /* configure TIMER2: PWM on CH2 (PB0) and CH3 (PB1), update interrupt every 100ms */
+/**
+ * @brief 配置TIMER2以生成指定频率的PWM信号
+ * @param pwm_freq_hz 期望的PWM频率(Hz)
+ */
 void Config_Timer2_Init(uint32_t pwm_freq_hz)
 {
-    timer_parameter_struct initpara;
-    timer_oc_parameter_struct ocpara;
-    uint32_t pclk1;
-    uint32_t prescaler;
-    uint32_t arr;
+    timer_parameter_struct initpara;    // 定时器基本参数结构体
+    timer_oc_parameter_struct ocpara;   // 定时器输出比较参数结构体
+    uint32_t pclk1;                    // APB1总线时钟频率
+    uint32_t prescaler;                // 定时器预分频值
+    uint32_t arr;                      // 自动重装载值
 
     /* enable clocks */
     rcu_periph_clock_enable(RCU_TIMER2);

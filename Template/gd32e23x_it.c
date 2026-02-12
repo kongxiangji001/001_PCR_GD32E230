@@ -106,16 +106,22 @@ void SysTick_Handler(void)
     delay_decrement();
 }
 
-/* TIMER2 update IRQ: set 100ms flag (timer configured to update at 1kHz and ARR counted to 1000) */
+/* TIMER2 update IRQ: set 100ms and 200ms flags (timer configured to update at 1kHz and ARR counted to 1000) */
 void TIMER2_IRQHandler(void)
 {
-    static uint16_t ms_count = 0;
+    static uint16_t ms_count_100ms = 0;
+    static uint16_t ms_count_200ms = 0;
     if (RESET != timer_flag_get(TIMER2, TIMER_FLAG_UP)) {
         timer_flag_clear(TIMER2, TIMER_FLAG_UP);
-        ms_count++;
-        if (ms_count >= 100) { /* 100 updates @1ms -> 100ms */
-            ms_count = 0;
+        ms_count_100ms++;
+        ms_count_200ms++;
+        if (ms_count_100ms >= 100) { /* 100 updates @1ms -> 100ms */
+            ms_count_100ms = 0;
             flag_100ms = 1;
+        }
+        if (ms_count_200ms >= 200) { /* 200 updates @1ms -> 200ms */
+            ms_count_200ms = 0;
+            flag_200ms = 1;
         }
     }
 }

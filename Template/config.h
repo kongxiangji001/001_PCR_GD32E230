@@ -19,4 +19,7 @@ void SetHeaterDuty(uint8_t channel, uint8_t duty_percent);
 /* 100ms flag set by TIMER2 IRQ */
 extern volatile uint8_t flag_100ms;
 
+/* 200ms flag set by TIMER2 IRQ */
+extern volatile uint8_t flag_200ms;
+
 #endif /* __CONFIG_H */
