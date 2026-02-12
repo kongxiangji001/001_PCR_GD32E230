@@ -86,6 +86,7 @@ int main(void)
 {
     systick_config();                    /* 初始化系统定时器 */
     IO_Config();                         /* initialize USART1, OW and LED IO */
+    ADC_Config();                        /* configure ADC for battery voltage on PA1 */
     /* configure TIMER2 with desired PWM frequency (Hz) */
     Config_Timer2_Init(2000U);           /* 2kHz PWM */
 
@@ -104,7 +105,7 @@ int main(void)
 
     /* helper: update heater control is implemented at top-level */
     while (1) {
-        float temp1 = 0.0f, temp2 = 0.0f;
+        float temp1 = 0.0f, temp2 = 0.0f, battery_voltage = 0.0f;
         uint8_t d1 = 0, d2 = 0;
         if (flag_100ms) {
             flag_100ms = 0;
@@ -112,7 +113,8 @@ int main(void)
             heater2.setpoint = 26.0f; /* 更新加热片2的目标温度 */
             d1 = UpdateHeater(2, &heater1, GetTemp, &temp1); /* TIM2_CH2 -> heater1, DQ1 PB11 */
             d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
-            printf("%.2f, %d, %.2f, %d\r\n", temp1, d1, temp2, d2);
+            battery_voltage = Read_Battery_Voltage(); /* 读取电池电压 */
+            printf("%.2f, %d, %.2f, %d, %.2f\r\n", temp1, d1, temp2, d2, battery_voltage);
         }
     }
 }

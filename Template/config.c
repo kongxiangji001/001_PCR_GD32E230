@@ -1,5 +1,6 @@
 #include "config.h"
 #include "gd32e23x_usart.h"
+#include "gd32e23x_adc.h"
 #include "owmy.h"
 #include "ow2.h"
 #include "delay.h"
@@ -151,4 +152,59 @@ void SetHeaterDuty(uint8_t channel, uint8_t duty_percent)
     } else if (channel == 3) {
         timer_channel_output_pulse_value_config(TIMER2, TIMER_CH_3, pulse);
     }
+}
+
+/* ADC configuration for battery voltage sampling on PA1 (ADC_IN1) */
+void ADC_Config(void)
+{
+    /* enable GPIOA and ADC clock */
+    rcu_periph_clock_enable(RCU_GPIOA);
+    rcu_periph_clock_enable(RCU_ADC);
+    
+    /* configure ADC clock */
+    rcu_adc_clock_config(RCU_ADCCK_APB2_DIV4);
+    
+    /* configure PA1 as analog input (ADC_IN1) */
+    gpio_mode_set(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO_PIN_1);
+    
+    /* ADC data alignment config */
+    adc_data_alignment_config(ADC_DATAALIGN_RIGHT);
+    
+    /* ADC channel length config */
+    adc_channel_length_config(ADC_REGULAR_CHANNEL, 1U);
+    
+    /* ADC regular channel config */
+    adc_regular_channel_config(0U, ADC_CHANNEL_1, ADC_SAMPLETIME_55POINT5);
+    
+    /* ADC external trigger config */
+    adc_external_trigger_source_config(ADC_REGULAR_CHANNEL, ADC_EXTTRIG_REGULAR_NONE);
+    
+    /* ADC external trigger enable */
+    adc_external_trigger_config(ADC_REGULAR_CHANNEL, ENABLE);
+    
+    /* enable ADC */
+    adc_enable();
+    Delay_ms(1);
+    
+    /* ADC calibration and reset calibration */
+    adc_calibration_enable();
+}
+
+/* read battery voltage (returns voltage in volts) */
+float Read_Battery_Voltage(void)
+{
+    /* start ADC software trigger */
+    adc_software_trigger_enable(ADC_REGULAR_CHANNEL);
+    
+    /* wait for end of conversion */
+    while(RESET == adc_flag_get(ADC_FLAG_EOC)) {
+    }
+    
+    /* read ADC conversion result */
+    uint16_t adc_value = adc_regular_data_read();
+    
+    /* convert ADC value to voltage (assuming 3.3V reference) */
+    float voltage = (float)adc_value * 3.3f / 4096.0f;
+    
+    return voltage;
 }
