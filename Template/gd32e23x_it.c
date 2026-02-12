@@ -110,18 +110,12 @@ void SysTick_Handler(void)
 void TIMER2_IRQHandler(void)
 {
     static uint16_t ms_count_100ms = 0;
-    static uint16_t ms_count_200ms = 0;
     if (RESET != timer_flag_get(TIMER2, TIMER_FLAG_UP)) {
         timer_flag_clear(TIMER2, TIMER_FLAG_UP);
         ms_count_100ms++;
-        ms_count_200ms++;
-        if (ms_count_100ms >= 100) { /* 100 updates @1ms -> 100ms */
+        if (ms_count_100ms >= 200) { /* 200 updates @1ms -> 100ms */
             ms_count_100ms = 0;
             flag_100ms = 1;
-        }
-        if (ms_count_200ms >= 200) { /* 200 updates @1ms -> 200ms */
-            ms_count_200ms = 0;
-            flag_200ms = 1;
         }
     }
 }

@@ -3,9 +3,9 @@
 <title>Static Call Graph - [.\output\Project.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\output\Project.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6230001: Last Updated: Thu Feb 12 15:56:23 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6230001: Last Updated: Thu Feb 12 16:16:43 2026
 <BR><P>
-<H3>Maximum Stack Usage =        420 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
+<H3>Maximum Stack Usage =        428 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
 main &rArr; Config_Timer2_Init &rArr; rcu_clock_freq_get
 <P>
@@ -746,7 +746,7 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> startup_gd32e23x.o(.text)
 </UL>
-<P><STRONG><a name="[14]"></a>TIMER2_IRQHandler</STRONG> (Thumb, 92 bytes, Stack size 8 bytes, gd32e23x_it.o(.text.TIMER2_IRQHandler))
+<P><STRONG><a name="[14]"></a>TIMER2_IRQHandler</STRONG> (Thumb, 56 bytes, Stack size 8 bytes, gd32e23x_it.o(.text.TIMER2_IRQHandler))
 <BR><BR>[Stack]<UL><LI>Max Depth = 20<LI>Call Chain = TIMER2_IRQHandler &rArr; timer_flag_get
 </UL>
 <BR>[Calls]<UL><LI><a href="#[80]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;timer_flag_clear
@@ -827,8 +827,8 @@ Global Symbols
 <LI><a href="#[5d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;IO_Config
 </UL>
 
-<P><STRONG><a name="[22]"></a>main</STRONG> (Thumb, 240 bytes, Stack size 184 bytes, main.o(.text.main))
-<BR><BR>[Stack]<UL><LI>Max Depth = 420<LI>Call Chain = main &rArr; Config_Timer2_Init &rArr; rcu_clock_freq_get
+<P><STRONG><a name="[22]"></a>main</STRONG> (Thumb, 240 bytes, Stack size 192 bytes, main.o(.text.main))
+<BR><BR>[Stack]<UL><LI>Max Depth = 428<LI>Call Chain = main &rArr; Config_Timer2_Init &rArr; rcu_clock_freq_get
 </UL>
 <BR>[Calls]<UL><LI><a href="#[62]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_f2d
 <LI><a href="#[89]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;pid_init
