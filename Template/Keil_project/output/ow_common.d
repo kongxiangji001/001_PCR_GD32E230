@@ -1,4 +1,4 @@
-./output/owmy.o: ..\owmy.c ..\owmy.h \
+./output/ow_common.o: ..\ow_common.c ..\ow_common.h \
   ..\..\Firmware\CMSIS\GD\GD32E23x\Include\gd32e23x.h \
   D:\03_Software\01_Development\11_Keil5_MDK\02_Pack\ARM\CMSIS\6.1.0\CMSIS\Core\Include\core_cm23.h \
   ..\..\Firmware\CMSIS\GD\GD32E23x\Include\system_gd32e23x.h \
@@ -22,4 +22,4 @@
   ..\..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_wwdgt.h \
   ..\..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_misc.h \
   ..\..\Firmware\GD32E23x_standard_peripheral\Include\gd32e23x_cmp.h \
-  ..\delay.h ..\ow_common.h
+  ..\delay.h

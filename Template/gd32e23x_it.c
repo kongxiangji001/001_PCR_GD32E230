@@ -35,6 +35,13 @@ OF SUCH DAMAGE.
 #include "gd32e23x_it.h"
 #include "systick.h"
 #include "config.h"
+#include "gd32e23x_gpio.h"
+
+/* external LED/TIM5 control flags (defined in main.c) */
+extern volatile uint8_t red_blink_enable;
+extern volatile uint8_t green_blink_enable;
+extern volatile uint8_t red_steady_on;
+extern volatile uint8_t blink_state;
 
 #define SRAM_PARITY_CHECK_ERROR_HANDLE(s)    do{}while(1)
 
@@ -116,6 +123,34 @@ void TIMER2_IRQHandler(void)
         if (ms_count_100ms >= 200) { /* 200 updates @1ms -> 100ms */
             ms_count_100ms = 0;
             flag_100ms = 1;
+        }
+    }
+}
+
+/* TIMER5 IRQ: used for LED blink timing (toggle blink_state and update outputs in ISR-safe way) */
+void TIMER5_IRQHandler(void)
+{
+    if (RESET != timer_flag_get(TIMER5, TIMER_FLAG_UP)) {
+        timer_flag_clear(TIMER5, TIMER_FLAG_UP);
+        /* toggle blink phase */
+        blink_state = !blink_state;
+
+        /* 红灯 PA8：常亮优先，其次闪烁 */
+        if (red_steady_on) {
+            gpio_bit_set(GPIOA, GPIO_PIN_8);
+        } else if (red_blink_enable) {
+            if (blink_state) gpio_bit_set(GPIOA, GPIO_PIN_8);
+            else gpio_bit_reset(GPIOA, GPIO_PIN_8);
+        } else {
+            gpio_bit_reset(GPIOA, GPIO_PIN_8);
+        }
+
+        /* 绿灯 PA9：仅闪烁 */
+        if (green_blink_enable) {
+            if (blink_state) gpio_bit_set(GPIOA, GPIO_PIN_9);
+            else gpio_bit_reset(GPIOA, GPIO_PIN_9);
+        } else {
+            gpio_bit_reset(GPIOA, GPIO_PIN_9);
         }
     }
 }

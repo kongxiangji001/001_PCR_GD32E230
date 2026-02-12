@@ -1,8 +1,13 @@
-/* ow2.c - minimal OneWire implementation on PA12 for second DQ line */
+/* Strict OneWire implementation for PA12 (copy of owmy style) */
 #include "ow2.h"
 #include "delay.h"
+#include "gd32e23x_gpio.h"
+#include "T117_MTS4_OW.h"
 
-/* timing constants (us) - reuse same as owmy.c */
+/* Match T117 usage: assume single device per bus */
+#define SingleIC
+
+/* timing constants (us) - match owmy.c */
 #define tSlot               60
 #define tRecover            10
 #define tInitSlot           3
@@ -97,10 +102,7 @@ uint8_t OW2_ReadByte(void)
     return byte;
 }
 
-/* DS18B20 command definitions (same as in T117_MTS4_OW.h) */
-#define SKIP_ROM    0xCC
-#define CONVERT_T   0x44
-#define READ_SCR    0xBE
+/* use commands from T117_MTS4_OW.h: SKIP_ROM, CONVERT_T, READ_TEMP, READ_SCR */
 
 int OW2_ConvertTemp(uint8_t x)
 {
@@ -111,17 +113,73 @@ int OW2_ConvertTemp(uint8_t x)
     return 1;
 }
 
+int OW2_ReadTemp(uint8_t* scr, uint8_t x)
+{
+    uint8_t i, j;
+    if (OW2_ResetPresence() == 0) return 0;
+#ifdef SingleIC
+    OW2_WriteByte(SKIP_ROM);
+#endif
+#ifndef SingleIC
+    OW2_WriteByte(MATCH_ROM);
+    for (j = 0; j < 8; j++) {
+        OW2_WriteByte(ID_Buff[x][j]);
+    }
+#endif
+    OW2_WriteByte(READ_TEMP);
+    for (i = 0; i < 3; i++) {
+        *scr++ = OW2_ReadByte();
+    }
+    return 1;
+}
+
+int OW2_ReadScratchpad(uint8_t* scr, uint8_t x)
+{
+    uint8_t i, j;
+    if (OW2_ResetPresence() == 0) return 0;
+#ifdef SingleIC
+    OW2_WriteByte(SKIP_ROM);
+#endif
+#ifndef SingleIC
+    OW2_WriteByte(MATCH_ROM);
+    for (j = 0; j < 8; j++) {
+        OW2_WriteByte(ID_Buff[x][j]);
+    }
+#endif
+    OW2_WriteByte(READ_SCR);
+    for (i = 0; i < sizeof(SCRATCHPAD_READ); i++) {
+        *scr++ = OW2_ReadByte();
+    }
+    return 1;
+}
+
+int OW2_ReadConfig(uint8_t* cfg, uint8_t x)
+{
+    uint8_t scrb[sizeof(SCRATCHPAD_READ)];
+    SCRATCHPAD_READ* scr = (SCRATCHPAD_READ*)scrb;
+    if (OW2_ReadScratchpad(scrb, x) == 0) return 0;
+#ifdef SingleIC
+    if (scrb[sizeof(scrb)-1] != MY_CRC8(scrb, sizeof(scrb)-1)) return 0;
+#endif
+#ifndef SingleIC
+    uint8_t ID1[15];
+    for (uint8_t j = 0; j < 7; j++) ID1[j] = ID_Buff[x][j];
+    for (uint8_t j = 0; j < (sizeof(scrb)-1); j++) ID1[j+7] = scrb[j];
+    if (scrb[sizeof(scrb)-1] != MY_CRC8(ID1, sizeof(scrb)+6)) return 0;
+#endif
+    *cfg = scr->Temp_Cfg;
+    return 1;
+}
+
 int OW2_ReadTempWaiting(uint16_t* iTemp, uint8_t x)
 {
-    (void)x;
-    uint8_t scrb[3];
-    if (OW2_ResetPresence() == 0) return 0;
-    OW2_WriteByte(SKIP_ROM);
-    OW2_WriteByte(READ_SCR);
-    for (int i = 0; i < 3; i++) scrb[i] = OW2_ReadByte();
-    /* combine LSB/MSB */
-    int16_t raw = (int16_t)((scrb[1] << 8) | scrb[0]);
-    *iTemp = (uint16_t)raw;
+    uint8_t scrb[sizeof(TEMP_READ)];
+    TEMP_READ* scr = (TEMP_READ*)scrb;
+    if (OW2_ReadTemp(scrb, x) == 0) return 0;
+#ifdef SingleIC
+    if (scrb[sizeof(scrb)-1] != MY_CRC8(scrb, sizeof(scrb)-1)) return 0;
+#endif
+    *iTemp = (uint16_t)scr->T_msb << 8 | scr->T_lsb;
     return 1;
 }
 
@@ -135,8 +193,11 @@ float GetTemp2(void)
 {
     uint16_t iTemp = 0;
     if (!OW2_ConvertTemp(0)) return 0.0f;
-    /* wait for conversion - using 20ms + margin (sensor-specific) */
-    Delay_ms(20);
+    /* wait for conversion */
+    Delay_ms(tCon_A32);
     if (!OW2_ReadTempWaiting(&iTemp, 0)) return 0.0f;
+#ifdef ENABLE_OW2_DEBUG
+    printf("OW2 raw=0x%04X\r\n", (unsigned int)iTemp);
+#endif
     return OW2_OutputtoTemp((int16_t)iTemp);
 }
