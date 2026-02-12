@@ -114,9 +114,5 @@ int main(void)
             d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
             printf("%.2f, %d, %.2f, %d\r\n", temp1, d1, temp2, d2);
         }
-        if (flag_200ms) {
-            flag_200ms = 0;
-            
-        }
     }
 }
