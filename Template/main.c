@@ -76,10 +76,12 @@ static uint8_t UpdateHeater(uint8_t channel, Heater_t *h, float (*getTempFunc)(v
 volatile uint8_t red_blink_enable = 0;
 volatile uint8_t green_blink_enable = 0;
 volatile uint8_t red_steady_on = 0;
+volatile uint8_t green_steady_on = 0;
 volatile uint8_t blink_state = 0;
 
 static void PowerLEDs_Init(void);
 static void Timer5_Init_ms(uint32_t ms);
+static void UpdatePowerLEDs(float battery_voltage, uint8_t pa10);
 
 /*!
     \brief      main function
@@ -97,7 +99,7 @@ int main(void)
     systick_config();                    /* 初始化系统定时器 */
     IO_Config();                         /* initialize USART1, OW and LED IO */
     PowerLEDs_Init();                    /* 初始化 PA8/PA9/PA10 */
-    Timer5_Init_ms(250);                 /* TIM5 每 250ms 切换一次 blink_state */
+    Timer5_Init_ms(1000);                 /* TIM5 每 250ms 切换一次 blink_state */
     ADC_Config();                        /* configure ADC for battery voltage on PA1 */
     /* configure TIMER2 with desired PWM frequency (Hz) */
     Config_Timer2_Init(2000U);           /* 2kHz PWM */
@@ -119,10 +121,10 @@ int main(void)
     while (1) {
         float temp1 = 0.0f, temp2 = 0.0f, battery_voltage = 0.0f;
         uint8_t d1 = 0, d2 = 0;
-        //if (flag_100ms) {
+        if (flag_100ms) {
             flag_100ms = 0;
-            heater1.setpoint = 42.0f;                         /* 更新加热片1的目标温度 */
-            heater2.setpoint = 95.0f;                         /* 更新加热片2的目标温度 */
+            heater1.setpoint = 45.0f;                         /* 更新加热片1的目标温度 */
+            heater2.setpoint = 48.0f;                         /* 更新加热片2的目标温度 */
             d1 = UpdateHeater(2, &heater1, GetTemp, &temp1);  /* TIM2_CH2 -> heater1, DQ1 PB11 */
             d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
             battery_voltage = Read_Battery_Voltage();         /* 读取电池电压 */
@@ -130,33 +132,15 @@ int main(void)
             /* 读取 PA10 (充电状态)：0=充电中，1=充满/无充电 */
             uint8_t pa10 = gpio_input_bit_get(GPIOA, GPIO_PIN_10);
 
-            /* 更新 LED 行为（按需求）:
-               红灯常亮 快没电了：PA10高且PA1电压<2.3V
-               红灯闪烁 充电中：PA10低且PA1电压<3.1V
-               绿灯闪烁 充电完了：
-                 (PA10高 且 电压>3.1V) 或 (PA10低 且 电压>3.12V)
+            /* 按新需求更新 LED 行为:
+               充满电:  PA10 高 且 电压 > 3.12V -> PA9 持续绿灯
+               充电中:  PA10 低 且 电压 < 3.12V -> PA9 绿灯闪烁
+               快没电:  PA10 高 且 电压 < 2.3V   -> PA8 红灯闪烁
             */
-            red_blink_enable = 0;
-            red_steady_on = 0;
-            green_blink_enable = 0;
-
-            if (pa10) { /* PA10 高 */
-                if (battery_voltage < 2.3f) {
-                    red_steady_on = 1;
-                } else if (battery_voltage > 3.1f) {
-                    green_blink_enable = 1;
-                }
-            } else { /* PA10 低 -> 充电中 */
-                if (battery_voltage < 3.1f) {
-                    red_blink_enable = 1;
-                }
-                if (battery_voltage > 3.12f) {
-                    green_blink_enable = 1;
-                }
-            }
-
+            /* 更新 LED 显示电池状态 */
+            UpdatePowerLEDs(battery_voltage, pa10);
             printf("%.2f, %d, %.2f, %d, %.2f\r\n", temp1, d1, temp2, d2, battery_voltage);
-        //}
+        }
     }
 }
 
@@ -201,4 +185,36 @@ static void Timer5_Init_ms(uint32_t ms)
     nvic_irq_enable(TIMER5_IRQn, 2U);
 
     timer_enable(TIMER5);
+}
+
+/* 更新 LED 显示电池状态 */
+static void UpdatePowerLEDs(float battery_voltage, uint8_t pa10)
+{
+    /* 按新需求更新 LED 行为:
+       充满电:  PA10 高 且 电压 > 3.12V -> PA9 持续绿灯
+       充电中:  PA10 低 且 电压 < 3.12V -> PA9 绿灯闪烁
+       快没电:  PA10 高 且 电压 < 2.3V   -> PA8 红灯闪烁
+    */
+    red_blink_enable = 0;
+    red_steady_on = 0;
+    green_blink_enable = 0;
+    green_steady_on = 0;
+
+    if (pa10) { /* PA10 高 */
+        if (battery_voltage > 3.12f) {
+            /* 充满电：请求 PA9 持续绿灯（由 ISR 执行） */
+            green_steady_on = 1;
+        } else if (battery_voltage < 2.3f) {
+            /* 快没电：PA8 红灯闪烁 */
+            red_blink_enable = 1;
+        }
+    } else { /* PA10 低 -> 充电中 */
+        if (battery_voltage < 3.12f) {
+            /* 充电中且电压低于 3.12V：绿灯闪烁 */
+            green_blink_enable = 1;
+        } else if (battery_voltage >= 3.12f) {
+            /* 充满电：请求 PA9 持续绿灯（由 ISR 执行） */
+            green_steady_on = 1;
+        }
+    }
 }

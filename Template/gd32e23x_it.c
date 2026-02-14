@@ -41,6 +41,7 @@ OF SUCH DAMAGE.
 extern volatile uint8_t red_blink_enable;
 extern volatile uint8_t green_blink_enable;
 extern volatile uint8_t red_steady_on;
+extern volatile uint8_t green_steady_on;
 extern volatile uint8_t blink_state;
 
 #define SRAM_PARITY_CHECK_ERROR_HANDLE(s)    do{}while(1)
@@ -145,8 +146,10 @@ void TIMER5_IRQHandler(void)
             gpio_bit_reset(GPIOA, GPIO_PIN_8);
         }
 
-        /* 绿灯 PA9：仅闪烁 */
-        if (green_blink_enable) {
+        /* 绿灯 PA9：常亮优先，其次闪烁 */
+        if (green_steady_on) {
+            gpio_bit_set(GPIOA, GPIO_PIN_9);
+        } else if (green_blink_enable) {
             if (blink_state) gpio_bit_set(GPIOA, GPIO_PIN_9);
             else gpio_bit_reset(GPIOA, GPIO_PIN_9);
         } else {
