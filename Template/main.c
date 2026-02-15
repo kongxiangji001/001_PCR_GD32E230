@@ -82,6 +82,7 @@ volatile uint8_t blink_state = 0;
 static void PowerLEDs_Init(void);
 static void Timer5_Init_ms(uint32_t ms);
 static void UpdatePowerLEDs(float battery_voltage, uint8_t pa10);
+static void UpdateZoneLEDs(void);
 
 /*!
     \brief      main function
@@ -139,6 +140,8 @@ int main(void)
             */
             /* 更新 LED 显示电池状态 */
             UpdatePowerLEDs(battery_voltage, pa10);
+            /* 更新 恒温区 / 裂解区 指示灯 */
+            UpdateZoneLEDs();
             printf("%.2f, %d, %.2f, %d, %.2f\r\n", temp1, d1, temp2, d2, battery_voltage);
         }
     }
@@ -215,6 +218,102 @@ static void UpdatePowerLEDs(float battery_voltage, uint8_t pa10)
         } else if (battery_voltage >= 3.12f) {
             /* 充满电：请求 PA9 持续绿灯（由 ISR 执行） */
             green_steady_on = 1;
+        }
+    }
+}
+
+/* 更新 恒温区 与 裂解区 指示灯 状态
+   恒温区输入: PA4(关), PA5(1档), PA7(2档) 低电平有效
+   恒温区微动: PB2 低电平表示有试管
+   恒温区输出:
+     1档 绿 -> PA15 低, PB3 高
+     1档 插管 红 -> PA15 高, PB3 低
+     2档 绿 -> PB4 低, PB5 高
+     2档 插管 红 -> PB4 高, PB5 低
+
+   裂解区输入: PB7(1档), PB8(2档), PB9(3档) 低电平有效
+   裂解区微动: PB6 低电平表示有试管
+   裂解区输出:
+     1档 绿 -> PB12 低, PB13 高
+     1档 插管 红 -> PB12 高, PB13 低
+     2档 绿 -> PB14 低, PB15 高
+     2档 插管 红 -> PB14 高, PB15 低
+     3档 绿 -> PB12/14 低, PB13/15 高
+     3档 插管 红 -> PB12/14 高, PB13/15 低
+*/
+static void UpdateZoneLEDs(void)
+{
+    uint8_t pa4 = gpio_input_bit_get(GPIOA, GPIO_PIN_4);
+    uint8_t pa5 = gpio_input_bit_get(GPIOA, GPIO_PIN_5);
+    uint8_t pa7 = gpio_input_bit_get(GPIOA, GPIO_PIN_7);
+    uint8_t pb2 = gpio_input_bit_get(GPIOB, GPIO_PIN_2); /* 恒温区微动 */
+    uint8_t pb6 = gpio_input_bit_get(GPIOB, GPIO_PIN_6); /* 裂解区微动 */
+
+    /* 先将恒温区相关输出置为默认 OFF (reset) */
+    gpio_bit_reset(GPIOA, GPIO_PIN_15);
+    gpio_bit_reset(GPIOB, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5);
+
+    /* 恒温区: 优先判断 1 档 -> 2 档 -> 关/无动作 */
+    if (pa5 == 0) {
+        /* 1 档 */
+        if (pb2 == 0) {
+            /* 插管 -> 红灯: PA15 高, PB3 低 */
+            gpio_bit_set(GPIOA, GPIO_PIN_15);
+            gpio_bit_reset(GPIOB, GPIO_PIN_3);
+        } else {
+            /* 未插管 -> 绿灯: PA15 低, PB3 高 */
+            gpio_bit_reset(GPIOA, GPIO_PIN_15);
+            gpio_bit_set(GPIOB, GPIO_PIN_3);
+        }
+    } else if (pa7 == 0) {
+        /* 2 档 */
+        if (pb2 == 0) {
+            /* 插管 -> 红灯: PB4 高, PB5 低 */
+            gpio_bit_set(GPIOB, GPIO_PIN_4);
+            gpio_bit_reset(GPIOB, GPIO_PIN_5);
+        } else {
+            /* 未插管 -> 绿灯: PB4 低, PB5 高 */
+            gpio_bit_reset(GPIOB, GPIO_PIN_4);
+            gpio_bit_set(GPIOB, GPIO_PIN_5);
+        }
+    } else {
+        /* OFF 或其他: 保持默认关闭 */
+        (void)pa4; /* 未使用的变量占位，PA4 表示关 */
+    }
+
+    /* 裂解区: 先清除输出，再根据档位设置 */
+    gpio_bit_reset(GPIOB, GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
+
+    if (gpio_input_bit_get(GPIOB, GPIO_PIN_7) == 0) {
+        /* 裂解区 1 档 */
+        if (pb6 == 0) {
+            gpio_bit_set(GPIOB, GPIO_PIN_12);
+            gpio_bit_reset(GPIOB, GPIO_PIN_13);
+        } else {
+            gpio_bit_reset(GPIOB, GPIO_PIN_12);
+            gpio_bit_set(GPIOB, GPIO_PIN_13);
+        }
+    } else if (gpio_input_bit_get(GPIOB, GPIO_PIN_8) == 0) {
+        /* 裂解区 2 档 */
+        if (pb6 == 0) {
+            gpio_bit_set(GPIOB, GPIO_PIN_14);
+            gpio_bit_reset(GPIOB, GPIO_PIN_15);
+        } else {
+            gpio_bit_reset(GPIOB, GPIO_PIN_14);
+            gpio_bit_set(GPIOB, GPIO_PIN_15);
+        }
+    } else if (gpio_input_bit_get(GPIOB, GPIO_PIN_9) == 0) {
+        /* 裂解区 3 档 (两组同时) */
+        if (pb6 == 0) {
+            gpio_bit_set(GPIOB, GPIO_PIN_12);
+            gpio_bit_reset(GPIOB, GPIO_PIN_13);
+            gpio_bit_set(GPIOB, GPIO_PIN_14);
+            gpio_bit_reset(GPIOB, GPIO_PIN_15);
+        } else {
+            gpio_bit_reset(GPIOB, GPIO_PIN_12);
+            gpio_bit_set(GPIOB, GPIO_PIN_13);
+            gpio_bit_reset(GPIOB, GPIO_PIN_14);
+            gpio_bit_set(GPIOB, GPIO_PIN_15);
         }
     }
 }
