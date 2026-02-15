@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\output\Project.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\output\Project.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6230001: Last Updated: Sat Feb 14 14:42:44 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6230001: Last Updated: Sat Feb 14 21:41:26 2026
 <BR><P>
 <H3>Maximum Stack Usage =        452 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -517,8 +517,8 @@ Global Symbols
 <P><STRONG><a name="[2]"></a>HardFault_Handler</STRONG> (Thumb, 4 bytes, Stack size 0 bytes, gd32e23x_it.o(.text.HardFault_Handler))
 <BR>[Address Reference Count : 1]<UL><LI> startup_gd32e23x.o(RESET)
 </UL>
-<P><STRONG><a name="[67]"></a>IO_Config</STRONG> (Thumb, 72 bytes, Stack size 24 bytes, config.o(.text.IO_Config))
-<BR><BR>[Stack]<UL><LI>Max Depth = 204<LI>Call Chain = IO_Config &rArr; usart1_init_local &rArr; usart_baudrate_set &rArr; rcu_clock_freq_get
+<P><STRONG><a name="[67]"></a>IO_Config</STRONG> (Thumb, 232 bytes, Stack size 48 bytes, config.o(.text.IO_Config))
+<BR><BR>[Stack]<UL><LI>Max Depth = 228<LI>Call Chain = IO_Config &rArr; usart1_init_local &rArr; usart_baudrate_set &rArr; rcu_clock_freq_get
 </UL>
 <BR>[Calls]<UL><LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OW2_Init
 <LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;usart1_init_local

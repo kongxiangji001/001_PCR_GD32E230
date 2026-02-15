@@ -45,9 +45,38 @@ void IO_Config(void)
     /* init second DQ on PA12 */
     OW2_Init();
 
-    /* LED: PC13 */
+    /* enable GPIO clocks used by board IO */
+    rcu_periph_clock_enable(RCU_GPIOA);
+    rcu_periph_clock_enable(RCU_GPIOB);
     rcu_periph_clock_enable(RCU_GPIOC);
-    rcu_periph_clock_enable(RCU_GPIOB); /* keep PB clock available for OW if needed */
+
+    /* Configure inputs (pull-up, 低电平有效) */
+    /* PA4 PA5 PA7: 恒温区开关输入 */
+    gpio_mode_set(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_7);
+
+    /* PB7 PB8 PB9: 裂解区 1/2/3 档开关输入 */
+    gpio_mode_set(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9);
+
+    /* PB2 (恒温区微动开关), PB6 (裂解区微动开关): 上拉输入，低电平触发 */
+    gpio_mode_set(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO_PIN_2 | GPIO_PIN_6);
+
+    /* Configure outputs (推挽) and default to OFF (reset) */
+    /* PA15: 恒温区 1 档时间指示灯 红色 */
+    gpio_mode_set(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_15);
+    gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_15);
+    gpio_bit_reset(GPIOA, GPIO_PIN_15);
+
+    /* PB3 PB4 PB5: 恒温区 指示灯（1档、1档另一个、2档红、2档绿） */
+    gpio_mode_set(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5);
+    gpio_output_options_set(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5);
+    gpio_bit_reset(GPIOB, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5);
+
+    /* PB12 PB13 PB14 PB15: 裂解区指示灯 55/95 度 红绿 */
+    gpio_mode_set(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
+    gpio_output_options_set(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
+    gpio_bit_reset(GPIOB, GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
+
+    /* 保持原有板载 LED PC13 初始化 */
     gpio_mode_set(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_13);
     gpio_output_options_set(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_13);
     gpio_bit_reset(GPIOC, GPIO_PIN_13);
