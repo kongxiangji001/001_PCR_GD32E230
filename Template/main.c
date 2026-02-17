@@ -224,7 +224,7 @@ static void UpdatePowerLEDs(float battery_voltage, uint8_t pa10)
 
 /* 更新 恒温区 与 裂解区 指示灯 状态
    恒温区输入: PA4(关), PA5(1档), PA7(2档) 低电平有效
-   恒温区微动: PB2 低电平表示有试管
+   恒温区微动: PA6 低电平表示有试管
    恒温区输出:
      1档 绿 -> PA15 低, PB3 高
      1档 插管 红 -> PA15 高, PB3 低
@@ -246,7 +246,7 @@ static void UpdateZoneLEDs(void)
     uint8_t pa4 = gpio_input_bit_get(GPIOA, GPIO_PIN_4);
     uint8_t pa5 = gpio_input_bit_get(GPIOA, GPIO_PIN_5);
     uint8_t pa7 = gpio_input_bit_get(GPIOA, GPIO_PIN_7);
-    uint8_t pb2 = gpio_input_bit_get(GPIOB, GPIO_PIN_2); /* 恒温区微动 */
+    uint8_t pa6 = gpio_input_bit_get(GPIOA, GPIO_PIN_6); /* 恒温区微动 */
     uint8_t pb6 = gpio_input_bit_get(GPIOB, GPIO_PIN_6); /* 裂解区微动 */
 
     /* 先将恒温区相关输出置为默认 OFF (reset) */
@@ -256,7 +256,7 @@ static void UpdateZoneLEDs(void)
     /* 恒温区: 优先判断 1 档 -> 2 档 -> 关/无动作 */
     if (pa5 == 0) {
         /* 1 档 */
-        if (pb2 == 0) {
+        if (pa6 == 0) {
             /* 插管 -> 红灯: PA15 高, PB3 低 */
             gpio_bit_set(GPIOA, GPIO_PIN_15);
             gpio_bit_reset(GPIOB, GPIO_PIN_3);
@@ -267,7 +267,7 @@ static void UpdateZoneLEDs(void)
         }
     } else if (pa7 == 0) {
         /* 2 档 */
-        if (pb2 == 0) {
+        if (pa6 == 0) {
             /* 插管 -> 红灯: PB4 高, PB5 低 */
             gpio_bit_set(GPIOB, GPIO_PIN_4);
             gpio_bit_reset(GPIOB, GPIO_PIN_5);

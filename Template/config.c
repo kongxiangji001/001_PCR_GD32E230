@@ -57,8 +57,10 @@ void IO_Config(void)
     /* PB7 PB8 PB9: 裂解区 1/2/3 档开关输入 */
     gpio_mode_set(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9);
 
-    /* PB2 (恒温区微动开关), PB6 (裂解区微动开关): 上拉输入，低电平触发 */
-    gpio_mode_set(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO_PIN_2 | GPIO_PIN_6);
+    /* PA6 (恒温区微动开关), PB6 (裂解区微动开关): 上拉输入，低电平触发 */
+    gpio_mode_set(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO_PIN_6);
+    /* 恒温区微动改到 PA6 */
+    gpio_mode_set(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, GPIO_PIN_6);
 
     /* Configure outputs (推挽) and default to OFF (reset) */
     /* PA15: 恒温区 1 档时间指示灯 红色 */
