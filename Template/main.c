@@ -199,11 +199,11 @@ int main(void)
                 heater2.setpoint = 95.0f;  /* 更新加热片2的目标温度为95摄氏度 */
             } else if (lysis2_state == 1 || lysis2_state == 2) {  /* LYSIS2_HEATING || LYSIS2_HOLDING */
                 heater2.setpoint = 55.0f;  /* 更新加热片2的目标温度为55摄氏度 */
-            } else if (lysis3_state == ZONE1_HEATING || lysis3_state == ZONE1_HOLDING || lysis3_state == ZONE1_HEATING2) {  /* LYSIS3_HEATING || LYSIS3_HOLDING || LYSIS3_HEATING2 */
+            } else if (lysis3_state == ZONE1_HEATING || lysis3_state == ZONE1_HOLDING || lysis3_state == ZONE1_HEATING2 || lysis3_state == ZONE1_HOLDING2) {  /* LYSIS3_HEATING || LYSIS3_HOLDING || LYSIS3_HEATING2 || LYSIS3_HOLDING2 */
                 /* 裂解区3档需要两阶段加热：55度5分钟，95度2分钟 */
                 if (lysis3_state == ZONE1_HEATING) {  /* LYSIS3_HEATING */
                     heater2.setpoint = 55.0f;  /* 第一阶段：55度 */
-                } else if (lysis3_state == ZONE1_HEATING2) {  /* LYSIS3_HEATING2 */
+                } else if (lysis3_state == ZONE1_HEATING2 || lysis3_state == ZONE1_HOLDING2) {  /* LYSIS3_HEATING2 || LYSIS3_HOLDING2 */
                     heater2.setpoint = 95.0f;  /* 第二阶段：95度 */
                 } else {  /* LYSIS3_HOLDING */
                     heater2.setpoint = 55.0f;  /* 第一阶段：55度 */
