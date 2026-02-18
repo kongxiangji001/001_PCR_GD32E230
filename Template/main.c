@@ -65,7 +65,10 @@ typedef enum {
     ZONE1_IDLE = 0,          /* 空闲状态 */
     ZONE1_HEATING,           /* 加热中 */
     ZONE1_HOLDING,           /* 恒温计时中 */
-    ZONE1_COMPLETE           /* 完成 */
+    ZONE1_COMPLETE,          /* 完成 */
+    ZONE1_HEATING2,          /* 第二阶段加热中 (裂解区3档) */
+    ZONE1_HOLDING2,          /* 第二阶段恒温计时中 (裂解区3档) */
+    ZONE1_COMPLETE2          /* 第二阶段完成 (裂解区3档) */
 } Zone1State_t;
 
 /* 恒温区1档LED状态 */
@@ -109,12 +112,36 @@ volatile uint32_t zone2_timer = 0;  /* 计时器，单位为100ms */
 volatile uint8_t zone2_blink_count = 0;  /* 红绿交替闪烁计数 */
 volatile uint8_t zone2_blink_state = 0;  /* 0=红灯, 1=绿灯 */
 
+/* 裂解区1档控制变量 */
+volatile Zone1State_t lysis1_state = ZONE1_IDLE;
+volatile uint8_t lysis1_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=LED_BLINK_RED_GREEN */
+volatile uint32_t lysis1_timer = 0;  /* 计时器，单位为100ms */
+volatile uint8_t lysis1_blink_count = 0;  /* 红绿交替闪烁计数 */
+volatile uint8_t lysis1_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+
+/* 裂解区2档控制变量 */
+volatile Zone1State_t lysis2_state = ZONE1_IDLE;
+volatile uint8_t lysis2_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=LED_BLINK_RED_GREEN */
+volatile uint32_t lysis2_timer = 0;  /* 计时器，单位为100ms */
+volatile uint8_t lysis2_blink_count = 0;  /* 红绿交替闪烁计数 */
+volatile uint8_t lysis2_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+
+/* 裂解区3档控制变量 */
+volatile Zone1State_t lysis3_state = ZONE1_IDLE;
+volatile uint8_t lysis3_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=LED_BLINK_RED_GREEN */
+volatile uint32_t lysis3_timer = 0;  /* 计时器，单位为100ms */
+volatile uint8_t lysis3_blink_count = 0;  /* 红绿交替闪烁计数 */
+volatile uint8_t lysis3_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+
 static void PowerLEDs_Init(void);
 static void Timer5_Init_ms(uint32_t ms);
 static void UpdatePowerLEDs(float battery_voltage, uint8_t pa10);
 static void UpdateZoneLEDs(void);
 static void UpdateZone1State(float temp1, Heater_t *heater1);
 static void UpdateZone2State(float temp1, Heater_t *heater1);
+static void UpdateLysis1State(float temp2, Heater_t *heater2);
+static void UpdateLysis2State(float temp2, Heater_t *heater2);
+static void UpdateLysis3State(float temp2, Heater_t *heater2);
 
 /*!
     \brief      main function
@@ -167,7 +194,23 @@ int main(void)
                 heater1.setpoint = 0.0f;   /* 其他状态停止加热 */
             }
             
-            heater2.setpoint = 48.0f;                         /* 更新加热片2的目标温度 */
+            /* 根据裂解区1档状态设置加热片2的目标温度 */
+            if (lysis1_state == 1 || lysis1_state == 2) {  /* LYSIS1_HEATING || LYSIS1_HOLDING */
+                heater2.setpoint = 95.0f;  /* 更新加热片2的目标温度为95摄氏度 */
+            } else if (lysis2_state == 1 || lysis2_state == 2) {  /* LYSIS2_HEATING || LYSIS2_HOLDING */
+                heater2.setpoint = 55.0f;  /* 更新加热片2的目标温度为55摄氏度 */
+            } else if (lysis3_state == ZONE1_HEATING || lysis3_state == ZONE1_HOLDING || lysis3_state == ZONE1_HEATING2) {  /* LYSIS3_HEATING || LYSIS3_HOLDING || LYSIS3_HEATING2 */
+                /* 裂解区3档需要两阶段加热：55度5分钟，95度2分钟 */
+                if (lysis3_state == ZONE1_HEATING) {  /* LYSIS3_HEATING */
+                    heater2.setpoint = 55.0f;  /* 第一阶段：55度 */
+                } else if (lysis3_state == ZONE1_HEATING2) {  /* LYSIS3_HEATING2 */
+                    heater2.setpoint = 95.0f;  /* 第二阶段：95度 */
+                } else {  /* LYSIS3_HOLDING */
+                    heater2.setpoint = 55.0f;  /* 第一阶段：55度 */
+                }
+            } else {
+                heater2.setpoint = 48.0f;  /* 更新加热片2的目标温度 */
+            }
             d1 = UpdateHeater(2, &heater1, GetTemp, &temp1);  /* TIM2_CH2 -> heater1, DQ1 PB11 */
             d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
             battery_voltage = Read_Battery_Voltage();         /* 读取电池电压 */
@@ -176,6 +219,12 @@ int main(void)
             UpdateZone1State(temp1, &heater1);
             /* 更新恒温区2档状态 */
             UpdateZone2State(temp1, &heater1);
+            /* 更新裂解区1档状态 */
+            UpdateLysis1State(temp2, &heater2);
+            /* 更新裂解区2档状态 */
+            UpdateLysis2State(temp2, &heater2);
+            /* 更新裂解区3档状态 */
+            UpdateLysis3State(temp2, &heater2);
 
             /* 读取 PA10 (充电状态)：0=充电中，1=充满/无充电 */
             uint8_t pa10 = gpio_input_bit_get(GPIOA, GPIO_PIN_10);
@@ -392,29 +441,132 @@ static void UpdateZoneLEDs(void)
     if (gpio_input_bit_get(GPIOB, GPIO_PIN_7) == 0) {
         /* 裂解区 1 档 */
         if (pb6 == 0) {
-            gpio_bit_set(GPIOB, GPIO_PIN_12);
-            gpio_bit_reset(GPIOB, GPIO_PIN_13);
+            /* 插管: 根据裂解区1档状态控制LED */
+            if (lysis1_state == 3) {  /* LYSIS1_COMPLETE */
+                /* 完成状态: 根据LED状态控制 */
+                if (lysis1_led_state == 1) {  /* LED_RED */
+                    /* 红灯: PB12 高, PB13 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_12);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                } else if (lysis1_led_state == 2) {  /* LED_GREEN */
+                    /* 绿灯: PB12 低, PB13 高 */
+                    gpio_bit_reset(GPIOB, GPIO_PIN_12);
+                    gpio_bit_set(GPIOB, GPIO_PIN_13);
+                } else if (lysis1_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+                    /* 红绿交替闪烁 */
+                    if (lysis1_blink_state == 0) {
+                        /* 红灯: PB12 高, PB13 低 */
+                        gpio_bit_set(GPIOB, GPIO_PIN_12);
+                        gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                    } else {
+                        /* 绿灯: PB12 低, PB13 高 */
+                        gpio_bit_reset(GPIOB, GPIO_PIN_12);
+                        gpio_bit_set(GPIOB, GPIO_PIN_13);
+                    }
+                } else {
+                    /* 默认: 红灯: PB12 高, PB13 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_12);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                }
+            } else {
+                /* 其他状态: 红灯: PB12 高, PB13 低 */
+                gpio_bit_set(GPIOB, GPIO_PIN_12);
+                gpio_bit_reset(GPIOB, GPIO_PIN_13);
+            }
         } else {
+            /* 未插管 -> 绿灯: PB12 低, PB13 高 */
             gpio_bit_reset(GPIOB, GPIO_PIN_12);
             gpio_bit_set(GPIOB, GPIO_PIN_13);
         }
     } else if (gpio_input_bit_get(GPIOB, GPIO_PIN_8) == 0) {
         /* 裂解区 2 档 */
         if (pb6 == 0) {
-            gpio_bit_set(GPIOB, GPIO_PIN_14);
-            gpio_bit_reset(GPIOB, GPIO_PIN_15);
+            /* 插管: 根据裂解区2档状态控制LED */
+            if (lysis2_state == 3) {  /* LYSIS2_COMPLETE */
+                /* 完成状态: 根据LED状态控制 */
+                if (lysis2_led_state == 1) {  /* LED_RED */
+                    /* 红灯: PB14 高, PB15 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_14);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                } else if (lysis2_led_state == 2) {  /* LED_GREEN */
+                    /* 绿灯: PB14 低, PB15 高 */
+                    gpio_bit_reset(GPIOB, GPIO_PIN_14);
+                    gpio_bit_set(GPIOB, GPIO_PIN_15);
+                } else if (lysis2_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+                    /* 红绿交替闪烁 */
+                    if (lysis2_blink_state == 0) {
+                        /* 红灯: PB14 高, PB15 低 */
+                        gpio_bit_set(GPIOB, GPIO_PIN_14);
+                        gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                    } else {
+                        /* 绿灯: PB14 低, PB15 高 */
+                        gpio_bit_reset(GPIOB, GPIO_PIN_14);
+                        gpio_bit_set(GPIOB, GPIO_PIN_15);
+                    }
+                } else {
+                    /* 默认: 红灯: PB14 高, PB15 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_14);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                }
+            } else {
+                /* 其他状态: 红灯: PB14 高, PB15 低 */
+                gpio_bit_set(GPIOB, GPIO_PIN_14);
+                gpio_bit_reset(GPIOB, GPIO_PIN_15);
+            }
         } else {
+            /* 未插管 -> 绿灯: PB14 低, PB15 高 */
             gpio_bit_reset(GPIOB, GPIO_PIN_14);
             gpio_bit_set(GPIOB, GPIO_PIN_15);
         }
     } else if (gpio_input_bit_get(GPIOB, GPIO_PIN_9) == 0) {
         /* 裂解区 3 档 (两组同时) */
         if (pb6 == 0) {
-            gpio_bit_set(GPIOB, GPIO_PIN_12);
-            gpio_bit_reset(GPIOB, GPIO_PIN_13);
-            gpio_bit_set(GPIOB, GPIO_PIN_14);
-            gpio_bit_reset(GPIOB, GPIO_PIN_15);
+            /* 插管: 根据裂解区3档状态控制LED */
+            if (lysis3_state == ZONE1_COMPLETE2) {  /* LYSIS3_COMPLETE */
+                /* 完成状态: 根据LED状态控制 */
+                if (lysis3_led_state == 1) {  /* LED_RED */
+                    /* 红灯: PB12 高, PB13 低, PB14 高, PB15 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_12);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                    gpio_bit_set(GPIOB, GPIO_PIN_14);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                } else if (lysis3_led_state == 2) {  /* LED_GREEN */
+                    /* 绿灯: PB12 低, PB13 高, PB14 低, PB15 高 */
+                    gpio_bit_reset(GPIOB, GPIO_PIN_12);
+                    gpio_bit_set(GPIOB, GPIO_PIN_13);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_14);
+                    gpio_bit_set(GPIOB, GPIO_PIN_15);
+                } else if (lysis3_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+                    /* 红绿交替闪烁 */
+                    if (lysis3_blink_state == 0) {
+                        /* 红灯: PB12 高, PB13 低, PB14 高, PB15 低 */
+                        gpio_bit_set(GPIOB, GPIO_PIN_12);
+                        gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                        gpio_bit_set(GPIOB, GPIO_PIN_14);
+                        gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                    } else {
+                        /* 绿灯: PB12 低, PB13 高, PB14 低, PB15 高 */
+                        gpio_bit_reset(GPIOB, GPIO_PIN_12);
+                        gpio_bit_set(GPIOB, GPIO_PIN_13);
+                        gpio_bit_reset(GPIOB, GPIO_PIN_14);
+                        gpio_bit_set(GPIOB, GPIO_PIN_15);
+                    }
+                } else {
+                    /* 默认: 红灯: PB12 高, PB13 低, PB14 高, PB15 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_12);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                    gpio_bit_set(GPIOB, GPIO_PIN_14);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                }
+            } else {
+                /* 其他状态: 红灯: PB12 高, PB13 低, PB14 高, PB15 低 */
+                gpio_bit_set(GPIOB, GPIO_PIN_12);
+                gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                gpio_bit_set(GPIOB, GPIO_PIN_14);
+                gpio_bit_reset(GPIOB, GPIO_PIN_15);
+            }
         } else {
+            /* 未插管 -> 绿灯: PB12 低, PB13 高, PB14 低, PB15 高 */
             gpio_bit_reset(GPIOB, GPIO_PIN_12);
             gpio_bit_set(GPIOB, GPIO_PIN_13);
             gpio_bit_reset(GPIOB, GPIO_PIN_14);
@@ -530,5 +682,189 @@ static void UpdateZone2State(float temp1, Heater_t *heater1)
         zone2_timer = 0;
         zone2_blink_count = 0;
         zone2_blink_state = 0;
+    }
+}
+
+/* 更新裂解区1档状态 */
+static void UpdateLysis1State(float temp2, Heater_t *heater2)
+{
+    uint8_t pb7 = gpio_input_bit_get(GPIOB, GPIO_PIN_7);
+    uint8_t pb6 = gpio_input_bit_get(GPIOB, GPIO_PIN_6);
+    
+    /* 检查是否处于1档且有试管 */
+    if (pb7 == 0 && pb6 == 0) {
+        switch (lysis1_state) {
+            case 0:  /* LYSIS1_IDLE */
+                /* 空闲状态，开始加热 */
+                lysis1_state = 1;  /* LYSIS1_HEATING */
+                lysis1_timer = 0;
+                lysis1_led_state = 1;  /* LED_RED */
+                break;
+                
+            case 1:  /* LYSIS1_HEATING */
+                /* 加热中，检查是否到达目标温度 */
+                if (temp2 >= 94.0f) {  /* 到达94度认为接近目标温度 */
+                    lysis1_state = 2;  /* LYSIS1_HOLDING */
+                    lysis1_timer = 0;
+                }
+                break;
+                
+            case 2:  /* LYSIS1_HOLDING */
+                /* 恒温计时中，每100ms增加一次计数 */
+                lysis1_timer++;
+                /* 5分钟 = 300秒 = 3000个100ms */
+                if (lysis1_timer >= 3000) {
+                    /* 计时结束，停止加热 */
+                    lysis1_state = 3;  /* LYSIS1_COMPLETE */
+                    lysis1_led_state = 3;  /* LED_BLINK_RED_GREEN */
+                    lysis1_blink_count = 0;
+                    lysis1_blink_state = 0;
+                }
+                break;
+                
+            case 3:  /* LYSIS1_COMPLETE */
+                /* 完成状态，保持LED状态 */
+                break;
+                
+            default:
+                lysis1_state = 0;  /* LYSIS1_IDLE */
+                break;
+        }
+    } else {
+        /* 不在1档或没有试管，重置状态 */
+        lysis1_state = 0;  /* LYSIS1_IDLE */
+        lysis1_led_state = 0;  /* LED_OFF */
+        lysis1_timer = 0;
+        lysis1_blink_count = 0;
+        lysis1_blink_state = 0;
+    }
+}
+
+/* 更新裂解区2档状态 */
+static void UpdateLysis2State(float temp2, Heater_t *heater2)
+{
+    uint8_t pb8 = gpio_input_bit_get(GPIOB, GPIO_PIN_8);
+    uint8_t pb6 = gpio_input_bit_get(GPIOB, GPIO_PIN_6);
+    
+    /* 检查是否处于2档且有试管 */
+    if (pb8 == 0 && pb6 == 0) {
+        switch (lysis2_state) {
+            case 0:  /* LYSIS2_IDLE */
+                /* 空闲状态，开始加热 */
+                lysis2_state = 1;  /* LYSIS2_HEATING */
+                lysis2_timer = 0;
+                lysis2_led_state = 1;  /* LED_RED */
+                break;
+                
+            case 1:  /* LYSIS2_HEATING */
+                /* 加热中，检查是否到达目标温度 */
+                if (temp2 >= 54.0f) {  /* 到达54度认为接近目标温度 */
+                    lysis2_state = 2;  /* LYSIS2_HOLDING */
+                    lysis2_timer = 0;
+                }
+                break;
+                
+            case 2:  /* LYSIS2_HOLDING */
+                /* 恒温计时中，每100ms增加一次计数 */
+                lysis2_timer++;
+                /* 5分钟 = 300秒 = 3000个100ms */
+                if (lysis2_timer >= 3000) {
+                    /* 计时结束，停止加热 */
+                    lysis2_state = 3;  /* LYSIS2_COMPLETE */
+                    lysis2_led_state = 3;  /* LED_BLINK_RED_GREEN */
+                    lysis2_blink_count = 0;
+                    lysis2_blink_state = 0;
+                }
+                break;
+                
+            case 3:  /* LYSIS2_COMPLETE */
+                /* 完成状态，保持LED状态 */
+                break;
+                
+            default:
+                lysis2_state = 0;  /* LYSIS2_IDLE */
+                break;
+        }
+    } else {
+        /* 不在2档或没有试管，重置状态 */
+        lysis2_state = 0;  /* LYSIS2_IDLE */
+        lysis2_led_state = 0;  /* LED_OFF */
+        lysis2_timer = 0;
+        lysis2_blink_count = 0;
+        lysis2_blink_state = 0;
+    }
+}
+
+/* 更新裂解区3档状态 */
+static void UpdateLysis3State(float temp2, Heater_t *heater2)
+{
+    uint8_t pb9 = gpio_input_bit_get(GPIOB, GPIO_PIN_9);
+    uint8_t pb6 = gpio_input_bit_get(GPIOB, GPIO_PIN_6);
+    
+    /* 检查是否处于3档且有试管 */
+    if (pb9 == 0 && pb6 == 0) {
+        switch (lysis3_state) {
+            case ZONE1_IDLE:  /* LYSIS3_IDLE */
+                /* 空闲状态，开始加热 */
+                lysis3_state = ZONE1_HEATING;  /* LYSIS3_HEATING */
+                lysis3_timer = 0;
+                lysis3_led_state = 1;  /* LED_RED */
+                break;
+                
+            case ZONE1_HEATING:  /* LYSIS3_HEATING */
+                /* 加热中，检查是否到达目标温度 */
+                if (temp2 >= 54.0f) {  /* 到达54度认为接近目标温度 */
+                    lysis3_state = ZONE1_HOLDING;  /* LYSIS3_HOLDING */
+                    lysis3_timer = 0;
+                }
+                break;
+                
+            case ZONE1_HOLDING:  /* LYSIS3_HOLDING */
+                /* 恒温计时中，每100ms增加一次计数 */
+                lysis3_timer++;
+                /* 5分钟 = 300秒 = 3000个100ms */
+                if (lysis3_timer >= 3000) {
+                    /* 计时结束，进入第二阶段加热 */
+                    lysis3_state = ZONE1_HEATING2;  /* LYSIS3_HEATING2 */
+                    lysis3_timer = 0;
+                }
+                break;
+                
+            case ZONE1_HEATING2:  /* LYSIS3_HEATING2 */
+                /* 第二阶段加热中，检查是否到达目标温度 */
+                if (temp2 >= 94.0f) {  /* 到达94度认为接近目标温度 */
+                    lysis3_state = ZONE1_HOLDING2;  /* LYSIS3_HOLDING2 */
+                    lysis3_timer = 0;
+                }
+                break;
+                
+            case ZONE1_HOLDING2:  /* LYSIS3_HOLDING2 */
+                /* 第二阶段恒温计时中，每100ms增加一次计数 */
+                lysis3_timer++;
+                /* 2分钟 = 120秒 = 1200个100ms */
+                if (lysis3_timer >= 1200) {
+                    /* 计时结束，停止加热 */
+                    lysis3_state = ZONE1_COMPLETE2;  /* LYSIS3_COMPLETE */
+                    lysis3_led_state = 3;  /* LED_BLINK_RED_GREEN */
+                    lysis3_blink_count = 0;
+                    lysis3_blink_state = 0;
+                }
+                break;
+                
+            case ZONE1_COMPLETE2:  /* LYSIS3_COMPLETE */
+                /* 完成状态，保持LED状态 */
+                break;
+                
+            default:
+                lysis3_state = ZONE1_IDLE;  /* LYSIS3_IDLE */
+                break;
+        }
+    } else {
+        /* 不在3档或没有试管，重置状态 */
+        lysis3_state = 0;  /* LYSIS3_IDLE */
+        lysis3_led_state = 0;  /* LED_OFF */
+        lysis3_timer = 0;
+        lysis3_blink_count = 0;
+        lysis3_blink_state = 0;
     }
 }

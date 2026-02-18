@@ -195,5 +195,65 @@ void TIMER5_IRQHandler(void)
                 }
             }
         }
+        
+        /* 裂解区1档LED闪烁控制 */
+        extern volatile uint8_t lysis1_led_state;
+        extern volatile uint8_t lysis1_blink_count;
+        extern volatile uint8_t lysis1_blink_state;
+        
+        if (lysis1_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+            /* 红绿交替闪烁 */
+            lysis1_blink_state = !lysis1_blink_state;
+            /* 每次切换红绿状态，计数一次 */
+            if (lysis1_blink_state) {
+                lysis1_blink_count++;
+                /* 闪烁3次（6次切换）后，切换到绿色常亮 */
+                if (lysis1_blink_count >= 6) {
+                    lysis1_led_state = 2;  /* LED_GREEN */
+                    lysis1_blink_count = 0;
+                    lysis1_blink_state = 0;
+                }
+            }
+        }
+        
+        /* 裂解区2档LED闪烁控制 */
+        extern volatile uint8_t lysis2_led_state;
+        extern volatile uint8_t lysis2_blink_count;
+        extern volatile uint8_t lysis2_blink_state;
+        
+        if (lysis2_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+            /* 红绿交替闪烁 */
+            lysis2_blink_state = !lysis2_blink_state;
+            /* 每次切换红绿状态，计数一次 */
+            if (lysis2_blink_state) {
+                lysis2_blink_count++;
+                /* 闪烁3次（6次切换）后，切换到绿色常亮 */
+                if (lysis2_blink_count >= 6) {
+                    lysis2_led_state = 2;  /* LED_GREEN */
+                    lysis2_blink_count = 0;
+                    lysis2_blink_state = 0;
+                }
+            }
+        }
+        
+        /* 裂解区3档LED闪烁控制 */
+        extern volatile uint8_t lysis3_led_state;
+        extern volatile uint8_t lysis3_blink_count;
+        extern volatile uint8_t lysis3_blink_state;
+        
+        if (lysis3_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+            /* 红绿交替闪烁 */
+            lysis3_blink_state = !lysis3_blink_state;
+            /* 每次切换红绿状态，计数一次 */
+            if (lysis3_blink_state) {
+                lysis3_blink_count++;
+                /* 闪烁3次（6次切换）后，切换到绿色常亮 */
+                if (lysis3_blink_count >= 6) {
+                    lysis3_led_state = 2;  /* LED_GREEN */
+                    lysis3_blink_count = 0;
+                    lysis3_blink_state = 0;
+                }
+            }
+        }
     }
 }
