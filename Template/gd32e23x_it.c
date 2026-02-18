@@ -155,5 +155,45 @@ void TIMER5_IRQHandler(void)
         } else {
             gpio_bit_reset(GPIOA, GPIO_PIN_9);
         }
+        
+        /* 恒温区1档LED闪烁控制 */
+        extern volatile uint8_t zone1_led_state;
+        extern volatile uint8_t zone1_blink_count;
+        extern volatile uint8_t zone1_blink_state;
+        
+        if (zone1_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+            /* 红绿交替闪烁 */
+            zone1_blink_state = !zone1_blink_state;
+            /* 每次切换红绿状态，计数一次 */
+            if (zone1_blink_state) {
+                zone1_blink_count++;
+                /* 闪烁3次（6次切换）后，切换到绿色常亮 */
+                if (zone1_blink_count >= 6) {
+                    zone1_led_state = 2;  /* LED_GREEN */
+                    zone1_blink_count = 0;
+                    zone1_blink_state = 0;
+                }
+            }
+        }
+        
+        /* 恒温区2档LED闪烁控制 */
+        extern volatile uint8_t zone2_led_state;
+        extern volatile uint8_t zone2_blink_count;
+        extern volatile uint8_t zone2_blink_state;
+        
+        if (zone2_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+            /* 红绿交替闪烁 */
+            zone2_blink_state = !zone2_blink_state;
+            /* 每次切换红绿状态，计数一次 */
+            if (zone2_blink_state) {
+                zone2_blink_count++;
+                /* 闪烁3次（6次切换）后，切换到绿色常亮 */
+                if (zone2_blink_count >= 6) {
+                    zone2_led_state = 2;  /* LED_GREEN */
+                    zone2_blink_count = 0;
+                    zone2_blink_state = 0;
+                }
+            }
+        }
     }
 }

@@ -60,6 +60,22 @@ typedef struct {
     uint8_t duty;
 } Heater_t;
 
+/* 恒温区1档状态机 */
+typedef enum {
+    ZONE1_IDLE = 0,          /* 空闲状态 */
+    ZONE1_HEATING,           /* 加热中 */
+    ZONE1_HOLDING,           /* 恒温计时中 */
+    ZONE1_COMPLETE           /* 完成 */
+} Zone1State_t;
+
+/* 恒温区1档LED状态 */
+typedef enum {
+    LED_OFF = 0,
+    LED_RED,
+    LED_GREEN,
+    LED_BLINK_RED_GREEN
+} Zone1LEDState_t;
+
 static uint8_t UpdateHeater(uint8_t channel, Heater_t *h, float (*getTempFunc)(void), float *outTemp)
 {
     float temp = getTempFunc();
@@ -79,10 +95,26 @@ volatile uint8_t red_steady_on = 0;
 volatile uint8_t green_steady_on = 0;
 volatile uint8_t blink_state = 0;
 
+/* 恒温区1档控制变量 */
+volatile Zone1State_t zone1_state = ZONE1_IDLE;
+volatile uint8_t zone1_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=LED_BLINK_RED_GREEN */
+volatile uint32_t zone1_timer = 0;  /* 计时器，单位为100ms */
+volatile uint8_t zone1_blink_count = 0;  /* 红绿交替闪烁计数 */
+volatile uint8_t zone1_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+
+/* 恒温区2档控制变量 */
+volatile Zone1State_t zone2_state = ZONE1_IDLE;
+volatile uint8_t zone2_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=LED_BLINK_RED_GREEN */
+volatile uint32_t zone2_timer = 0;  /* 计时器，单位为100ms */
+volatile uint8_t zone2_blink_count = 0;  /* 红绿交替闪烁计数 */
+volatile uint8_t zone2_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+
 static void PowerLEDs_Init(void);
 static void Timer5_Init_ms(uint32_t ms);
 static void UpdatePowerLEDs(float battery_voltage, uint8_t pa10);
 static void UpdateZoneLEDs(void);
+static void UpdateZone1State(float temp1, Heater_t *heater1);
+static void UpdateZone2State(float temp1, Heater_t *heater1);
 
 /*!
     \brief      main function
@@ -124,11 +156,26 @@ int main(void)
         uint8_t d1 = 0, d2 = 0;
         if (flag_100ms) {
             flag_100ms = 0;
-            heater1.setpoint = 45.0f;                         /* 更新加热片1的目标温度 */
+            /* 更新恒温区1档状态 - 已移动到UpdateHeater之后 */
+            /* 更新恒温区2档状态 - 已移动到UpdateHeater之后 */
+            /* 根据恒温区1档状态设置加热片1的目标温度 */
+            if (zone1_state == 1 || zone1_state == 2) {  /* ZONE1_HEATING || ZONE1_HOLDING */
+                heater1.setpoint = 45.0f;  /* 更新加热片1的目标温度为45摄氏度 */
+            } else if (zone2_state == 1 || zone2_state == 2) {  /* ZONE2_HEATING || ZONE2_HOLDING */
+                heater1.setpoint = 45.0f;  /* 更新加热片1的目标温度为45摄氏度 */
+            } else {
+                heater1.setpoint = 0.0f;   /* 其他状态停止加热 */
+            }
+            
             heater2.setpoint = 48.0f;                         /* 更新加热片2的目标温度 */
             d1 = UpdateHeater(2, &heater1, GetTemp, &temp1);  /* TIM2_CH2 -> heater1, DQ1 PB11 */
             d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
             battery_voltage = Read_Battery_Voltage();         /* 读取电池电压 */
+            
+            /* 更新恒温区1档状态 */
+            UpdateZone1State(temp1, &heater1);
+            /* 更新恒温区2档状态 */
+            UpdateZone2State(temp1, &heater1);
 
             /* 读取 PA10 (充电状态)：0=充电中，1=充满/无充电 */
             uint8_t pa10 = gpio_input_bit_get(GPIOA, GPIO_PIN_10);
@@ -257,9 +304,38 @@ static void UpdateZoneLEDs(void)
     if (pa5 == 0) {
         /* 1 档 */
         if (pa6 == 0) {
-            /* 插管 -> 红灯: PA15 高, PB3 低 */
-            gpio_bit_set(GPIOA, GPIO_PIN_15);
-            gpio_bit_reset(GPIOB, GPIO_PIN_3);
+            /* 插管: 根据恒温区1档状态控制LED */
+            if (zone1_state == 3) {  /* ZONE1_COMPLETE */
+                /* 完成状态: 根据LED状态控制 */
+                if (zone1_led_state == 1) {  /* LED_RED */
+                    /* 红灯: PA15 高, PB3 低 */
+                    gpio_bit_set(GPIOA, GPIO_PIN_15);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_3);
+                } else if (zone1_led_state == 2) {  /* LED_GREEN */
+                    /* 绿灯: PA15 低, PB3 高 */
+                    gpio_bit_reset(GPIOA, GPIO_PIN_15);
+                    gpio_bit_set(GPIOB, GPIO_PIN_3);
+                } else if (zone1_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+                    /* 红绿交替闪烁 */
+                    if (zone1_blink_state == 0) {
+                        /* 红灯: PA15 高, PB3 低 */
+                        gpio_bit_set(GPIOA, GPIO_PIN_15);
+                        gpio_bit_reset(GPIOB, GPIO_PIN_3);
+                    } else {
+                        /* 绿灯: PA15 低, PB3 高 */
+                        gpio_bit_reset(GPIOA, GPIO_PIN_15);
+                        gpio_bit_set(GPIOB, GPIO_PIN_3);
+                    }
+                } else {
+                    /* 默认: 红灯: PA15 高, PB3 低 */
+                    gpio_bit_set(GPIOA, GPIO_PIN_15);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_3);
+                }
+            } else {
+                /* 其他状态: 红灯: PA15 高, PB3 低 */
+                gpio_bit_set(GPIOA, GPIO_PIN_15);
+                gpio_bit_reset(GPIOB, GPIO_PIN_3);
+            }
         } else {
             /* 未插管 -> 绿灯: PA15 低, PB3 高 */
             gpio_bit_reset(GPIOA, GPIO_PIN_15);
@@ -268,9 +344,38 @@ static void UpdateZoneLEDs(void)
     } else if (pa7 == 0) {
         /* 2 档 */
         if (pa6 == 0) {
-            /* 插管 -> 红灯: PB4 高, PB5 低 */
-            gpio_bit_set(GPIOB, GPIO_PIN_4);
-            gpio_bit_reset(GPIOB, GPIO_PIN_5);
+            /* 插管: 根据恒温区2档状态控制LED */
+            if (zone2_state == 3) {  /* ZONE2_COMPLETE */
+                /* 完成状态: 根据LED状态控制 */
+                if (zone2_led_state == 1) {  /* LED_RED */
+                    /* 红灯: PB4 高, PB5 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_4);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_5);
+                } else if (zone2_led_state == 2) {  /* LED_GREEN */
+                    /* 绿灯: PB4 低, PB5 高 */
+                    gpio_bit_reset(GPIOB, GPIO_PIN_4);
+                    gpio_bit_set(GPIOB, GPIO_PIN_5);
+                } else if (zone2_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+                    /* 红绿交替闪烁 */
+                    if (zone2_blink_state == 0) {
+                        /* 红灯: PB4 高, PB5 低 */
+                        gpio_bit_set(GPIOB, GPIO_PIN_4);
+                        gpio_bit_reset(GPIOB, GPIO_PIN_5);
+                    } else {
+                        /* 绿灯: PB4 低, PB5 高 */
+                        gpio_bit_reset(GPIOB, GPIO_PIN_4);
+                        gpio_bit_set(GPIOB, GPIO_PIN_5);
+                    }
+                } else {
+                    /* 默认: 红灯: PB4 高, PB5 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_4);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_5);
+                }
+            } else {
+                /* 其他状态: 红灯: PB4 高, PB5 低 */
+                gpio_bit_set(GPIOB, GPIO_PIN_4);
+                gpio_bit_reset(GPIOB, GPIO_PIN_5);
+            }
         } else {
             /* 未插管 -> 绿灯: PB4 低, PB5 高 */
             gpio_bit_reset(GPIOB, GPIO_PIN_4);
@@ -315,5 +420,115 @@ static void UpdateZoneLEDs(void)
             gpio_bit_reset(GPIOB, GPIO_PIN_14);
             gpio_bit_set(GPIOB, GPIO_PIN_15);
         }
+    }
+}
+
+/* 更新恒温区1档状态 */
+static void UpdateZone1State(float temp1, Heater_t *heater1)
+{
+    uint8_t pa5 = gpio_input_bit_get(GPIOA, GPIO_PIN_5);
+    uint8_t pa6 = gpio_input_bit_get(GPIOA, GPIO_PIN_6);
+    
+    /* 检查是否处于1档且有试管 */
+    if (pa5 == 0 && pa6 == 0) {
+        switch (zone1_state) {
+            case 0:  /* ZONE1_IDLE */
+                /* 空闲状态，开始加热 */
+                zone1_state = 1;  /* ZONE1_HEATING */
+                zone1_timer = 0;
+                zone1_led_state = 1;  /* LED_RED */
+                break;
+                
+            case 1:  /* ZONE1_HEATING */
+                /* 加热中，检查是否到达目标温度 */
+                if (temp1 >= 44.0f) {  /* 到达44度认为接近目标温度 */
+                    zone1_state = 2;  /* ZONE1_HOLDING */
+                    zone1_timer = 0;
+                }
+                break;
+                
+            case 2:  /* ZONE1_HOLDING */
+                /* 恒温计时中，每100ms增加一次计数 */
+                zone1_timer++;
+                /* 10分钟 = 600秒 = 6000个100ms */
+                if (zone1_timer >= 6000) {
+                    /* 计时结束，停止加热 */
+                    zone1_state = 3;  /* ZONE1_COMPLETE */
+                    zone1_led_state = 3;  /* LED_BLINK_RED_GREEN */
+                    zone1_blink_count = 0;
+                    zone1_blink_state = 0;
+                }
+                break;
+                
+            case 3:  /* ZONE1_COMPLETE */
+                /* 完成状态，保持LED状态 */
+                break;
+                
+            default:
+                zone1_state = 0;  /* ZONE1_IDLE */
+                break;
+        }
+    } else {
+        /* 不在1档或没有试管，重置状态 */
+        zone1_state = 0;  /* ZONE1_IDLE */
+        zone1_led_state = 0;  /* LED_OFF */
+        zone1_timer = 0;
+        zone1_blink_count = 0;
+        zone1_blink_state = 0;
+    }
+}
+
+/* 更新恒温区2档状态 */
+static void UpdateZone2State(float temp1, Heater_t *heater1)
+{
+    uint8_t pa7 = gpio_input_bit_get(GPIOA, GPIO_PIN_7);
+    uint8_t pa6 = gpio_input_bit_get(GPIOA, GPIO_PIN_6);
+    
+    /* 检查是否处于2档且有试管 */
+    if (pa7 == 0 && pa6 == 0) {
+        switch (zone2_state) {
+            case 0:  /* ZONE2_IDLE */
+                /* 空闲状态，开始加热 */
+                zone2_state = 1;  /* ZONE2_HEATING */
+                zone2_timer = 0;
+                zone2_led_state = 1;  /* LED_RED */
+                break;
+                
+            case 1:  /* ZONE2_HEATING */
+                /* 加热中，检查是否到达目标温度 */
+                if (temp1 >= 44.0f) {  /* 到达44度认为接近目标温度 */
+                    zone2_state = 2;  /* ZONE2_HOLDING */
+                    zone2_timer = 0;
+                }
+                break;
+                
+            case 2:  /* ZONE2_HOLDING */
+                /* 恒温计时中，每100ms增加一次计数 */
+                zone2_timer++;
+                /* 15分钟 = 900秒 = 9000个100ms */
+                if (zone2_timer >= 9000) {
+                    /* 计时结束，停止加热 */
+                    zone2_state = 3;  /* ZONE2_COMPLETE */
+                    zone2_led_state = 3;  /* LED_BLINK_RED_GREEN */
+                    zone2_blink_count = 0;
+                    zone2_blink_state = 0;
+                }
+                break;
+                
+            case 3:  /* ZONE2_COMPLETE */
+                /* 完成状态，保持LED状态 */
+                break;
+                
+            default:
+                zone2_state = 0;  /* ZONE2_IDLE */
+                break;
+        }
+    } else {
+        /* 不在2档或没有试管，重置状态 */
+        zone2_state = 0;  /* ZONE2_IDLE */
+        zone2_led_state = 0;  /* LED_OFF */
+        zone2_timer = 0;
+        zone2_blink_count = 0;
+        zone2_blink_state = 0;
     }
 }
