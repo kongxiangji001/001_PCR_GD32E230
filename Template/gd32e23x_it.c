@@ -160,8 +160,15 @@ void TIMER5_IRQHandler(void)
         extern volatile uint8_t zone1_led_state;
         extern volatile uint8_t zone1_blink_count;
         extern volatile uint8_t zone1_blink_state;
+        extern volatile uint8_t zone1_insert_blink_count;
         
-        if (zone1_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+        /* 插管红灯闪烁3次 */
+        if (zone1_insert_blink_count < 6) {
+            zone1_blink_state = !zone1_blink_state;
+            if (zone1_blink_state) {
+                zone1_insert_blink_count++;
+            }
+        } else if (zone1_led_state == 3) {  /* LED_BLINK_RED_GREEN */
             /* 红绿交替闪烁 */
             zone1_blink_state = !zone1_blink_state;
             /* 每次切换红绿状态，计数一次 */
@@ -180,8 +187,15 @@ void TIMER5_IRQHandler(void)
         extern volatile uint8_t zone2_led_state;
         extern volatile uint8_t zone2_blink_count;
         extern volatile uint8_t zone2_blink_state;
+        extern volatile uint8_t zone2_insert_blink_count;
         
-        if (zone2_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+        /* 插管红灯闪烁3次 */
+        if (zone2_insert_blink_count < 6) {
+            zone2_blink_state = !zone2_blink_state;
+            if (zone2_blink_state) {
+                zone2_insert_blink_count++;
+            }
+        } else if (zone2_led_state == 3) {  /* LED_BLINK_RED_GREEN */
             /* 红绿交替闪烁 */
             zone2_blink_state = !zone2_blink_state;
             /* 每次切换红绿状态，计数一次 */
@@ -200,8 +214,15 @@ void TIMER5_IRQHandler(void)
         extern volatile uint8_t lysis1_led_state;
         extern volatile uint8_t lysis1_blink_count;
         extern volatile uint8_t lysis1_blink_state;
+        extern volatile uint8_t lysis1_insert_blink_count;
         
-        if (lysis1_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+        /* 插管红灯闪烁3次 */
+        if (lysis1_insert_blink_count < 6) {
+            lysis1_blink_state = !lysis1_blink_state;
+            if (lysis1_blink_state) {
+                lysis1_insert_blink_count++;
+            }
+        } else if (lysis1_led_state == 3) {  /* LED_BLINK_RED_GREEN */
             /* 红绿交替闪烁 */
             lysis1_blink_state = !lysis1_blink_state;
             /* 每次切换红绿状态，计数一次 */
@@ -220,8 +241,15 @@ void TIMER5_IRQHandler(void)
         extern volatile uint8_t lysis2_led_state;
         extern volatile uint8_t lysis2_blink_count;
         extern volatile uint8_t lysis2_blink_state;
+        extern volatile uint8_t lysis2_insert_blink_count;
         
-        if (lysis2_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+        /* 插管红灯闪烁3次 */
+        if (lysis2_insert_blink_count < 6) {
+            lysis2_blink_state = !lysis2_blink_state;
+            if (lysis2_blink_state) {
+                lysis2_insert_blink_count++;
+            }
+        } else if (lysis2_led_state == 3) {  /* LED_BLINK_RED_GREEN */
             /* 红绿交替闪烁 */
             lysis2_blink_state = !lysis2_blink_state;
             /* 每次切换红绿状态，计数一次 */
@@ -240,8 +268,15 @@ void TIMER5_IRQHandler(void)
         extern volatile uint8_t lysis3_led_state;
         extern volatile uint8_t lysis3_blink_count;
         extern volatile uint8_t lysis3_blink_state;
+        extern volatile uint8_t lysis3_insert_blink_count;
         
-        if (lysis3_led_state == 3) {  /* LED_BLINK_RED_GREEN */
+        /* 插管红灯闪烁3次 */
+        if (lysis3_insert_blink_count < 6) {
+            lysis3_blink_state = !lysis3_blink_state;
+            if (lysis3_blink_state) {
+                lysis3_insert_blink_count++;
+            }
+        } else if (lysis3_led_state == 3) {  /* LED_BLINK_RED_GREEN */
             /* 红绿交替闪烁 */
             lysis3_blink_state = !lysis3_blink_state;
             /* 每次切换红绿状态，计数一次 */

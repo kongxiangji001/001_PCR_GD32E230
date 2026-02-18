@@ -104,6 +104,8 @@ volatile uint8_t zone1_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=L
 volatile uint32_t zone1_timer = 0;  /* 计时器，单位为100ms */
 volatile uint8_t zone1_blink_count = 0;  /* 红绿交替闪烁计数 */
 volatile uint8_t zone1_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+volatile uint8_t zone1_insert_blink_count = 0;  /* 插管红灯闪烁计数 */
+volatile uint8_t zone1_prev_pa6 = 1;  /* 上一次PA6状态 */
 
 /* 恒温区2档控制变量 */
 volatile Zone1State_t zone2_state = ZONE1_IDLE;
@@ -111,6 +113,8 @@ volatile uint8_t zone2_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=L
 volatile uint32_t zone2_timer = 0;  /* 计时器，单位为100ms */
 volatile uint8_t zone2_blink_count = 0;  /* 红绿交替闪烁计数 */
 volatile uint8_t zone2_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+volatile uint8_t zone2_insert_blink_count = 0;  /* 插管红灯闪烁计数 */
+volatile uint8_t zone2_prev_pa6 = 1;  /* 上一次PA6状态 */
 
 /* 裂解区1档控制变量 */
 volatile Zone1State_t lysis1_state = ZONE1_IDLE;
@@ -118,6 +122,8 @@ volatile uint8_t lysis1_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=
 volatile uint32_t lysis1_timer = 0;  /* 计时器，单位为100ms */
 volatile uint8_t lysis1_blink_count = 0;  /* 红绿交替闪烁计数 */
 volatile uint8_t lysis1_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+volatile uint8_t lysis1_insert_blink_count = 0;  /* 插管红灯闪烁计数 */
+volatile uint8_t lysis1_prev_pb6 = 1;  /* 上一次PB6状态 */
 
 /* 裂解区2档控制变量 */
 volatile Zone1State_t lysis2_state = ZONE1_IDLE;
@@ -125,6 +131,8 @@ volatile uint8_t lysis2_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=
 volatile uint32_t lysis2_timer = 0;  /* 计时器，单位为100ms */
 volatile uint8_t lysis2_blink_count = 0;  /* 红绿交替闪烁计数 */
 volatile uint8_t lysis2_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+volatile uint8_t lysis2_insert_blink_count = 0;  /* 插管红灯闪烁计数 */
+volatile uint8_t lysis2_prev_pb6 = 1;  /* 上一次PB6状态 */
 
 /* 裂解区3档控制变量 */
 volatile Zone1State_t lysis3_state = ZONE1_IDLE;
@@ -132,6 +140,8 @@ volatile uint8_t lysis3_led_state = 0;  /* 0=LED_OFF, 1=LED_RED, 2=LED_GREEN, 3=
 volatile uint32_t lysis3_timer = 0;  /* 计时器，单位为100ms */
 volatile uint8_t lysis3_blink_count = 0;  /* 红绿交替闪烁计数 */
 volatile uint8_t lysis3_blink_state = 0;  /* 0=红灯, 1=绿灯 */
+volatile uint8_t lysis3_insert_blink_count = 0;  /* 插管红灯闪烁计数 */
+volatile uint8_t lysis3_prev_pb6 = 1;  /* 上一次PB6状态 */
 
 static void PowerLEDs_Init(void);
 static void Timer5_Init_ms(uint32_t ms);
@@ -352,9 +362,29 @@ static void UpdateZoneLEDs(void)
     /* 恒温区: 优先判断 1 档 -> 2 档 -> 关/无动作 */
     if (pa5 == 0) {
         /* 1 档 */
+        /* 检测插管插入状态变化 */
+        if (pa6 != zone1_prev_pa6) {
+            zone1_prev_pa6 = pa6;
+            /* 从未插管变为插管，触发红灯闪烁3次 */
+            if (pa6 == 0) {
+                zone1_insert_blink_count = 0;
+            }
+        }
+        
         if (pa6 == 0) {
             /* 插管: 根据恒温区1档状态控制LED */
-            if (zone1_state == 3) {  /* ZONE1_COMPLETE */
+            if (zone1_insert_blink_count < 6) {
+                /* 插管红灯闪烁3次 */
+                if (zone1_blink_state == 0) {
+                    /* 红灯: PA15 高, PB3 低 */
+                    gpio_bit_set(GPIOA, GPIO_PIN_15);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_3);
+                } else {
+                    /* 灭灯 */
+                    gpio_bit_reset(GPIOA, GPIO_PIN_15);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_3);
+                }
+            } else if (zone1_state == 3) {  /* ZONE1_COMPLETE */
                 /* 完成状态: 根据LED状态控制 */
                 if (zone1_led_state == 1) {  /* LED_RED */
                     /* 红灯: PA15 高, PB3 低 */
@@ -392,9 +422,29 @@ static void UpdateZoneLEDs(void)
         }
     } else if (pa7 == 0) {
         /* 2 档 */
+        /* 检测插管插入状态变化 */
+        if (pa6 != zone2_prev_pa6) {
+            zone2_prev_pa6 = pa6;
+            /* 从未插管变为插管，触发红灯闪烁3次 */
+            if (pa6 == 0) {
+                zone2_insert_blink_count = 0;
+            }
+        }
+        
         if (pa6 == 0) {
             /* 插管: 根据恒温区2档状态控制LED */
-            if (zone2_state == 3) {  /* ZONE2_COMPLETE */
+            if (zone2_insert_blink_count < 6) {
+                /* 插管红灯闪烁3次 */
+                if (zone2_blink_state == 0) {
+                    /* 红灯: PB4 高, PB5 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_4);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_5);
+                } else {
+                    /* 灭灯 */
+                    gpio_bit_reset(GPIOB, GPIO_PIN_4);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_5);
+                }
+            } else if (zone2_state == 3) {  /* ZONE2_COMPLETE */
                 /* 完成状态: 根据LED状态控制 */
                 if (zone2_led_state == 1) {  /* LED_RED */
                     /* 红灯: PB4 高, PB5 低 */
@@ -438,11 +488,35 @@ static void UpdateZoneLEDs(void)
     /* 裂解区: 先清除输出，再根据档位设置 */
     gpio_bit_reset(GPIOB, GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
 
+    /* 检测裂解区插管插入状态变化 */
+    if (pb6 != lysis1_prev_pb6) {
+        lysis1_prev_pb6 = pb6;
+        lysis2_prev_pb6 = pb6;
+        lysis3_prev_pb6 = pb6;
+        /* 从未插管变为插管，触发红灯闪烁3次 */
+        if (pb6 == 0) {
+            lysis1_insert_blink_count = 0;
+            lysis2_insert_blink_count = 0;
+            lysis3_insert_blink_count = 0;
+        }
+    }
+    
     if (gpio_input_bit_get(GPIOB, GPIO_PIN_7) == 0) {
         /* 裂解区 1 档 */
         if (pb6 == 0) {
             /* 插管: 根据裂解区1档状态控制LED */
-            if (lysis1_state == 3) {  /* LYSIS1_COMPLETE */
+            if (lysis1_insert_blink_count < 6) {
+                /* 插管红灯闪烁3次 */
+                if (lysis1_blink_state == 0) {
+                    /* 红灯: PB12 高, PB13 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_12);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                } else {
+                    /* 灭灯 */
+                    gpio_bit_reset(GPIOB, GPIO_PIN_12);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                }
+            } else if (lysis1_state == 3) {  /* LYSIS1_COMPLETE */
                 /* 完成状态: 根据LED状态控制 */
                 if (lysis1_led_state == 1) {  /* LED_RED */
                     /* 红灯: PB12 高, PB13 低 */
@@ -482,7 +556,18 @@ static void UpdateZoneLEDs(void)
         /* 裂解区 2 档 */
         if (pb6 == 0) {
             /* 插管: 根据裂解区2档状态控制LED */
-            if (lysis2_state == 3) {  /* LYSIS2_COMPLETE */
+            if (lysis2_insert_blink_count < 6) {
+                /* 插管红灯闪烁3次 */
+                if (lysis2_blink_state == 0) {
+                    /* 红灯: PB14 高, PB15 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_14);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                } else {
+                    /* 灭灯 */
+                    gpio_bit_reset(GPIOB, GPIO_PIN_14);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                }
+            } else if (lysis2_state == 3) {  /* LYSIS2_COMPLETE */
                 /* 完成状态: 根据LED状态控制 */
                 if (lysis2_led_state == 1) {  /* LED_RED */
                     /* 红灯: PB14 高, PB15 低 */
@@ -522,7 +607,22 @@ static void UpdateZoneLEDs(void)
         /* 裂解区 3 档 (两组同时) */
         if (pb6 == 0) {
             /* 插管: 根据裂解区3档状态控制LED */
-            if (lysis3_state == ZONE1_COMPLETE2) {  /* LYSIS3_COMPLETE */
+            if (lysis3_insert_blink_count < 6) {
+                /* 插管红灯闪烁3次 */
+                if (lysis3_blink_state == 0) {
+                    /* 红灯: PB12 高, PB13 低, PB14 高, PB15 低 */
+                    gpio_bit_set(GPIOB, GPIO_PIN_12);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                    gpio_bit_set(GPIOB, GPIO_PIN_14);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                } else {
+                    /* 灭灯 */
+                    gpio_bit_reset(GPIOB, GPIO_PIN_12);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_13);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_14);
+                    gpio_bit_reset(GPIOB, GPIO_PIN_15);
+                }
+            } else if (lysis3_state == ZONE1_COMPLETE2) {  /* LYSIS3_COMPLETE */
                 /* 完成状态: 根据LED状态控制 */
                 if (lysis3_led_state == 1) {  /* LED_RED */
                     /* 红灯: PB12 高, PB13 低, PB14 高, PB15 低 */
