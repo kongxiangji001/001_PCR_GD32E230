@@ -209,7 +209,7 @@ int main(void)
                     heater2.setpoint = 55.0f;  /* 第一阶段：55度 */
                 }
             } else {
-                heater2.setpoint = 48.0f;  /* 更新加热片2的目标温度 */
+                heater2.setpoint = 0.0f;  /* 裂解区1、2、3档以外的情况，停止加热 */
             }
             d1 = UpdateHeater(2, &heater1, GetTemp, &temp1);  /* TIM2_CH2 -> heater1, DQ1 PB11 */
             d2 = UpdateHeater(3, &heater2, GetTemp2, &temp2); /* TIM2_CH3 -> heater2, DQ2 PA12 */
